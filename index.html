@@ -336,8 +336,7 @@ let htmlData = `
 dynamicContent.innerHTML = htmlData;
 
 try {
-
-    const module =
+const module =
         await import("./website-posts.js");
 
     const posts =
@@ -382,19 +381,17 @@ try {
                 <div class="post-card">
 
                     <h2 class="post-title">
-                        ${escapeHtml(post.title || "")}
+                        ${post.title || ""}
                     </h2>
 
                     <div class="post-content">
-                        ${escapeHtml(post.content || "")}
+                        ${post.content || ""}
                     </div>
 
                     <div class="post-footer">
 
                         <div class="post-tags">
-                            ${escapeHtml(
-                                post.category || "সাধারণ"
-                            )}
+                            ${post.category || "সাধারণ"}
                         </div>
 
                         <div class="post-date">
@@ -427,7 +424,7 @@ try {
             </h2>
 
             <div class="post-content">
-                ${escapeHtml(error.message)}
+                ${error.message}
             </div>
         </div>
     `;
