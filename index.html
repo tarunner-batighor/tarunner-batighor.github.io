@@ -315,7 +315,7 @@
 
     const menuItems = document.querySelectorAll('.circle-menu-item');  
     menuItems.forEach(function(item) {  
-        item.addEventListener('click', function(e) {  
+        item.addEventListener('click', async function(e) {
             e.stopPropagation();  
 
             const category = this.getAttribute('data-cat');  
