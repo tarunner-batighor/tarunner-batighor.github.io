@@ -411,5 +411,1089 @@
             hintText.innerText = '|| প্রতিটি পাপড়ি, একেকটি ভাবনার দুয়ার ||';
         });
     </script>
+    <script type="module">
+// @ts-nocheck
+
+  import { initializeApp }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    serverTimestamp,
+    getDocs,
+    query,
+    where,
+    updateDoc,
+    doc
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  import {
+    getAuth,
+    signInWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+
+  /* =========================
+     FIREBASE CONFIG
+  ========================= */
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyD97ZB_1H6JcZ6MzTHj39uJic3gFqJnH6o",
+    authDomain: "tarunner-batighor.firebaseapp.com",
+    projectId: "tarunner-batighor",
+    storageBucket: "tarunner-batighor.firebasestorage.app",
+    messagingSenderId: "494925974714",
+    appId: "1:494925974714:web:7f2ec193de3c8ee03b0683",
+    measurementId: "G-Y9L1BG62BL"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+
+  /* =========================
+     ADMIN EMAIL
+  ========================= */
+
+  const ADMIN_EMAIL =
+    "abdulhadibinmasud775@gmail.com";
+
+
+  /* =========================
+     POST SUBMISSION
+  ========================= */
+
+  const addPostBtn =
+    document.getElementById("addPostBtn");
+
+
+  addPostBtn.addEventListener("click", async () => {
+
+    const title =
+      prompt("পোস্টের শিরোনাম লিখুন:");
+
+    if (!title || !title.trim()) {
+      return;
+    }
+
+
+    const content =
+      prompt("পোস্টের লেখা লিখুন:");
+
+    if (!content || !content.trim()) {
+      return;
+    }
+
+
+    /* =========================
+       CATEGORY SELECT
+    ========================= */
+
+    const category = await selectCategory();
+
+    if (!category) {
+      return;
+    }
+
+
+    /* =========================
+       SAVE TO FIREBASE
+    ========================= */
+
+    try {
+
+      await addDoc(
+        collection(db, "Posts"),
+        {
+          title: title.trim(),
+          content: content.trim(),
+          category: category,
+          status: "pending",
+          createdAt: serverTimestamp()
+        }
+      );
+
+
+      alert(
+        "✅ পোস্ট জমা হয়েছে!\n\n" +
+        "পোস্টটি এখন Pending অবস্থায় আছে।\n\n" +
+        "Admin Publish করার পর এটি ওয়েবসাইটে দেখা যাবে।"
+      );
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      alert(
+        "❌ পোস্ট সেভ হয়নি:\n\n" +
+        error.message
+      );
+    }
+
+  });
+
+
+  /* =========================
+     CATEGORY SELECT FUNCTION
+  ========================= */
+
+  function selectCategory() {
+
+    return new Promise((resolve) => {
+
+      const overlay =
+        document.createElement("div");
+
+
+      overlay.style.cssText = `
+        position:fixed;
+        inset:0;
+        z-index:99999;
+        background:rgba(0,0,0,.75);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:20px;
+      `;
+
+
+      overlay.innerHTML = `
+
+        <div style="
+          width:100%;
+          max-width:380px;
+          background:#1e293b;
+          padding:25px;
+          border-radius:18px;
+          box-shadow:0 10px 40px rgba(0,0,0,.5);
+        ">
+
+          <h3 style="
+            color:#38bdf8;
+            text-align:center;
+            margin-bottom:20px;
+            font-size:20px;
+          ">
+            ক্যাটাগরি নির্বাচন করুন
+          </h3>
+
+
+          <select
+            id="postCategorySelect"
+            style="
+              width:100%;
+              padding:14px;
+              border-radius:10px;
+              border:none;
+              font-size:16px;
+              background:white;
+              color:#0f172a;
+              outline:none;
+            "
+          >
+
+            <option value="">
+              -- একটি ক্যাটাগরি নির্বাচন করুন --
+            </option>
+
+            <option value="ayat">
+              আয়াত ও হাদিস
+            </option>
+
+            <option value="atheism">
+              নাস্তিকতার জবাব
+            </option>
+
+            <option value="protest">
+              প্রতিবাদ
+            </option>
+
+            <option value="biography">
+              জীবনী
+            </option>
+
+            <option value="story">
+              গল্প-উপন্যাস
+            </option>
+
+          </select>
+
+
+          <div style="
+            display:flex;
+            gap:10px;
+            margin-top:20px;
+          ">
+
+            <button
+              id="cancelCategoryBtn"
+              style="
+                flex:1;
+                padding:12px;
+                border:none;
+                border-radius:9px;
+                background:#64748b;
+                color:white;
+                cursor:pointer;
+                font-size:15px;
+              "
+            >
+              বাতিল
+            </button>
+
+
+            <button
+              id="confirmCategoryBtn"
+              style="
+                flex:1;
+                padding:12px;
+                border:none;
+                border-radius:9px;
+                background:#10b981;
+                color:white;
+                cursor:pointer;
+                font-size:15px;
+                font-weight:bold;
+              "
+            >
+              নির্বাচন করুন
+            </button>
+
+          </div>
+
+        </div>
+      `;
+
+
+      document.body.appendChild(overlay);
+
+
+      /* CONFIRM */
+
+      document
+        .getElementById("confirmCategoryBtn")
+        .addEventListener("click", () => {
+
+          const selected =
+            document.getElementById(
+              "postCategorySelect"
+            ).value;
+
+
+          if (!selected) {
+
+            alert(
+              "⚠️ দয়া করে একটি ক্যাটাগরি নির্বাচন করুন।"
+            );
+
+            return;
+          }
+
+
+          overlay.remove();
+
+          resolve(selected);
+
+        });
+
+
+      /* CANCEL */
+
+      document
+        .getElementById("cancelCategoryBtn")
+        .addEventListener("click", () => {
+
+          overlay.remove();
+
+          resolve(null);
+
+        });
+
+    });
+
+  }
+
+
+  /* =========================
+     ADMIN BUTTON
+  ========================= */
+
+  const adminButton =
+    document.createElement("button");
+
+
+  adminButton.innerHTML = "🔐";
+
+  adminButton.title =
+    "Admin Panel";
+
+
+  adminButton.style.cssText = `
+    position:fixed;
+    bottom:20px;
+    right:20px;
+    z-index:3000;
+    width:50px;
+    height:50px;
+    border:none;
+    border-radius:50%;
+    background:#334155;
+    color:white;
+    font-size:22px;
+    cursor:pointer;
+    box-shadow:0 4px 15px rgba(0,0,0,.4);
+  `;
+
+
+  document.body.appendChild(adminButton);
+
+
+  /* =========================
+     ADMIN PANEL
+  ========================= */
+
+  const adminPanel =
+    document.createElement("div");
+
+
+  adminPanel.style.cssText = `
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:5000;
+    background:#0f172a;
+    color:white;
+    overflow-y:auto;
+    padding:25px;
+  `;
+
+
+  adminPanel.innerHTML = `
+
+    <div style="
+      max-width:700px;
+      margin:auto;
+    ">
+
+
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:25px;
+      ">
+
+        <h2 style="
+          color:#38bdf8;
+          margin:0;
+        ">
+          🔐 Admin Panel
+        </h2>
+
+
+        <button
+          id="closeAdmin"
+          style="
+            background:#ef4444;
+            color:white;
+            border:none;
+            padding:10px 15px;
+            border-radius:8px;
+            cursor:pointer;
+          "
+        >
+          ✕ বন্ধ
+        </button>
+
+      </div>
+
+
+      <!-- LOGIN -->
+
+      <div
+        id="adminLoginBox"
+        style="
+          background:#1e293b;
+          padding:20px;
+          border-radius:15px;
+        "
+      >
+
+        <h3 style="
+          margin-bottom:15px;
+        ">
+          Admin Login
+        </h3>
+
+
+        <input
+          id="adminEmail"
+          type="email"
+          placeholder="Admin Email"
+          style="
+            width:100%;
+            padding:12px;
+            margin-bottom:10px;
+            border-radius:8px;
+            border:none;
+          "
+        >
+
+
+        <input
+          id="adminPassword"
+          type="password"
+          placeholder="Password"
+          style="
+            width:100%;
+            padding:12px;
+            margin-bottom:10px;
+            border-radius:8px;
+            border:none;
+          "
+        >
+
+
+        <button
+          id="adminLoginBtn"
+          style="
+            width:100%;
+            padding:12px;
+            background:#10b981;
+            color:white;
+            border:none;
+            border-radius:8px;
+            font-weight:bold;
+            cursor:pointer;
+          "
+        >
+          Login
+        </button>
+
+
+        <p
+          id="loginMessage"
+          style="
+            margin-top:10px;
+            color:#f87171;
+          "
+        ></p>
+
+      </div>
+
+
+      <!-- ADMIN AREA -->
+
+      <div
+        id="adminArea"
+        style="display:none;"
+      >
+
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          margin-bottom:20px;
+        ">
+
+          <h3>
+            📝 Pending Posts
+          </h3>
+
+
+          <button
+            id="logoutBtn"
+            style="
+              background:#ef4444;
+              color:white;
+              border:none;
+              padding:8px 12px;
+              border-radius:7px;
+              cursor:pointer;
+            "
+          >
+            Logout
+          </button>
+
+        </div>
+
+
+        <div id="pendingPosts">
+          Loading...
+        </div>
+
+      </div>
+
+    </div>
+  `;
+
+
+  document.body.appendChild(adminPanel);
+
+
+  /* =========================
+     OPEN ADMIN
+  ========================= */
+
+  adminButton.addEventListener(
+    "click",
+    () => {
+
+      adminPanel.style.display =
+        "block";
+
+    }
+  );
+
+
+  /* =========================
+     CLOSE ADMIN
+  ========================= */
+
+  document
+    .getElementById("closeAdmin")
+    .addEventListener(
+      "click",
+      () => {
+
+        adminPanel.style.display =
+          "none";
+
+      }
+    );
+
+
+  /* =========================
+     ADMIN LOGIN
+  ========================= */
+
+  document
+    .getElementById("adminLoginBtn")
+    .addEventListener(
+      "click",
+      async () => {
+
+        const email =
+          document
+            .getElementById("adminEmail")
+            .value
+            .trim();
+
+
+        const password =
+          document
+            .getElementById("adminPassword")
+            .value;
+
+
+        const message =
+          document.getElementById(
+            "loginMessage"
+          );
+
+
+        if (!email || !password) {
+
+          message.innerText =
+            "ইমেইল ও Password দিন।";
+
+          return;
+        }
+
+
+        /* শুধুমাত্র নির্দিষ্ট Admin email */
+
+        if (
+          email.toLowerCase() !==
+          ADMIN_EMAIL.toLowerCase()
+        ) {
+
+          message.innerText =
+            "❌ এই Email দিয়ে Admin Login করা যাবে না।";
+
+          return;
+        }
+
+
+        try {
+
+          await signInWithEmailAndPassword(
+            auth,
+            email,
+            password
+          );
+
+
+          message.innerText = "";
+
+
+        } catch (error) {
+
+          console.error(error);
+
+          message.innerText =
+            "❌ Login ব্যর্থ:\n" +
+            error.message;
+
+        }
+
+      }
+    );
+
+
+  /* =========================
+     AUTH STATE
+  ========================= */
+
+  onAuthStateChanged(
+    auth,
+    (user) => {
+
+      const loginBox =
+        document.getElementById(
+          "adminLoginBox"
+        );
+
+
+      const adminArea =
+        document.getElementById(
+          "adminArea"
+        );
+
+
+      if (
+        user &&
+        user.email &&
+        user.email.toLowerCase() ===
+        ADMIN_EMAIL.toLowerCase()
+      ) {
+
+        loginBox.style.display =
+          "none";
+
+        adminArea.style.display =
+          "block";
+
+        loadPendingPosts();
+
+      } else {
+
+        loginBox.style.display =
+          "block";
+
+        adminArea.style.display =
+          "none";
+
+      }
+
+    }
+  );
+
+
+  /* =========================
+     LOGOUT
+  ========================= */
+
+  document
+    .getElementById("logoutBtn")
+    .addEventListener(
+      "click",
+      async () => {
+
+        await signOut(auth);
+
+        alert(
+          "আপনি Logout করেছেন।"
+        );
+
+      }
+    );
+
+
+  /* =========================
+     LOAD PENDING POSTS
+  ========================= */
+
+  async function loadPendingPosts() {
+
+    const container =
+      document.getElementById(
+        "pendingPosts"
+      );
+
+
+    container.innerHTML =
+      "<p>Pending পোস্ট খোঁজা হচ্ছে...</p>";
+
+
+    try {
+
+      const q =
+        query(
+          collection(db, "Posts"),
+          where(
+            "status",
+            "==",
+            "pending"
+          )
+        );
+
+
+      const snapshot =
+        await getDocs(q);
+
+
+      if (snapshot.empty) {
+
+        container.innerHTML = `
+
+          <div style="
+            background:#1e293b;
+            padding:20px;
+            border-radius:12px;
+            text-align:center;
+          ">
+
+            ✅ কোনো Pending পোস্ট নেই।
+
+          </div>
+
+        `;
+
+        return;
+      }
+
+
+      container.innerHTML = "";
+
+
+      snapshot.forEach(
+        (postDoc) => {
+
+          const post =
+            postDoc.data();
+
+
+          const card =
+            document.createElement(
+              "div"
+            );
+
+
+          card.style.cssText = `
+            background:#ffffff;
+            color:#0f172a;
+            padding:20px;
+            border-radius:15px;
+            margin-bottom:20px;
+          `;
+
+
+          card.innerHTML = `
+
+            <h3 style="
+              margin-bottom:10px;
+            ">
+              ${escapeHtml(
+                post.title ||
+                "Untitled"
+              )}
+            </h3>
+
+
+            <p style="
+              color:#475569;
+              line-height:1.6;
+              white-space:pre-line;
+              margin-bottom:12px;
+            ">
+              ${escapeHtml(
+                post.content || ""
+              )}
+            </p>
+
+
+            <p style="
+              margin-bottom:15px;
+              color:#64748b;
+            ">
+
+              Category:
+
+              <strong>
+                ${getCategoryName(
+                  post.category
+                )}
+              </strong>
+
+            </p>
+
+
+            <div style="
+              display:flex;
+              gap:10px;
+              flex-wrap:wrap;
+            ">
+
+
+              <button
+                class="publishBtn"
+                style="
+                  background:#10b981;
+                  color:white;
+                  border:none;
+                  padding:10px 16px;
+                  border-radius:8px;
+                  cursor:pointer;
+                  font-weight:bold;
+                "
+              >
+                ✅ Publish
+              </button>
+
+
+              <button
+                class="deleteBtn"
+                style="
+                  background:#ef4444;
+                  color:white;
+                  border:none;
+                  padding:10px 16px;
+                  border-radius:8px;
+                  cursor:pointer;
+                "
+              >
+                🗑 Delete
+              </button>
+
+            </div>
+          `;
+
+
+          /* =========================
+             PUBLISH
+          ========================= */
+
+          card
+            .querySelector(
+              ".publishBtn"
+            )
+            .addEventListener(
+              "click",
+              async () => {
+
+                if (
+                  !confirm(
+                    "এই পোস্টটি Publish করতে চান?"
+                  )
+                ) {
+                  return;
+                }
+
+
+                try {
+
+                  await updateDoc(
+                    doc(
+                      db,
+                      "Posts",
+                      postDoc.id
+                    ),
+                    {
+                      status:
+                        "published"
+                    }
+                  );
+
+
+                  alert(
+                    "✅ পোস্ট Published হয়েছে!"
+                  );
+
+
+                  loadPendingPosts();
+
+
+                } catch (error) {
+
+                  console.error(
+                    error
+                  );
+
+
+                  alert(
+                    "❌ Publish করা যায়নি:\n\n" +
+                    error.message
+                  );
+
+                }
+
+              }
+            );
+
+
+          /* =========================
+             DELETE
+          ========================= */
+
+          card
+            .querySelector(
+              ".deleteBtn"
+            )
+            .addEventListener(
+              "click",
+              async () => {
+
+                if (
+                  !confirm(
+                    "এই Pending পোস্টটি মুছে ফেলতে চান?"
+                  )
+                ) {
+                  return;
+                }
+
+
+                try {
+
+                  await updateDoc(
+                    doc(
+                      db,
+                      "Posts",
+                      postDoc.id
+                    ),
+                    {
+                      status:
+                        "deleted"
+                    }
+                  );
+
+
+                  alert(
+                    "🗑 পোস্টটি সরানো হয়েছে।"
+                  );
+
+
+                  loadPendingPosts();
+
+
+                } catch (error) {
+
+                  console.error(
+                    error
+                  );
+
+
+                  alert(
+                    "❌ পোস্ট সরানো যায়নি:\n\n" +
+                    error.message
+                  );
+
+                }
+
+              }
+            );
+
+
+          container.appendChild(
+            card
+          );
+
+        }
+      );
+
+
+    } catch (error) {
+
+      console.error(error);
+
+
+      container.innerHTML = `
+
+        <div style="
+          background:#450a0a;
+          padding:20px;
+          border-radius:12px;
+          color:#fecaca;
+        ">
+
+          ❌ Pending পোস্ট লোড করা যায়নি।
+
+          <br><br>
+
+          ${escapeHtml(
+            error.message
+          )}
+
+        </div>
+
+      `;
+
+    }
+
+  }
+
+
+  /* =========================
+     CATEGORY NAME
+  ========================= */
+
+  function getCategoryName(
+    category
+  ) {
+
+    const names = {
+
+      ayat:
+        "আয়াত ও হাদিস",
+
+      atheism:
+        "নাস্তিকতার জবাব",
+
+      protest:
+        "প্রতিবাদ",
+
+      biography:
+        "জীবনী",
+
+      story:
+        "গল্প-উপন্যাস"
+
+    };
+
+
+    return escapeHtml(
+      names[category] ||
+      category ||
+      "সাধারণ"
+    );
+
+  }
+
+
+  /* =========================
+     HTML SECURITY
+  ========================= */
+
+  function escapeHtml(text) {
+
+    const div =
+      document.createElement(
+        "div"
+      );
+
+    div.textContent =
+      String(text ?? "");
+
+    return div.innerHTML;
+
+  }
+
+    </script>
 </body>
 </html>
