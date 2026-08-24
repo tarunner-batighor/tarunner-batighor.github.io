@@ -1,8 +1,4 @@
-// =========================
-// WEBSITE PUBLISHED POSTS
-// =========================
-
-import { initializeApp }
+import { getApps, initializeApp } 
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
 import {
@@ -10,11 +6,6 @@ import {
   collection,
   getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-
-// =========================
-// FIREBASE CONFIG
-// =========================
 
 const firebaseConfig = {
   apiKey: "AIzaSyD97ZB_1H6JcZ6MzTHj39uJic3gFqJnH6o",
@@ -26,18 +17,11 @@ const firebaseConfig = {
   measurementId: "G-Y9L1BG62BL"
 };
 
+const app = getApps().length
+  ? getApps()[0]
+  : initializeApp(firebaseConfig);
 
-// =========================
-// FIREBASE START
-// =========================
-
-const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
-
-// =========================
-// GET PUBLISHED POSTS
-// =========================
 
 export async function getPublishedPosts(category) {
 
