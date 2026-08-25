@@ -1,5 +1,5 @@
 // Firebase Imports
-import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, getDocs, getDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
 // Firebase Configuration
@@ -79,6 +79,59 @@ export async function getPendingPosts() {
     return posts;
   } catch (error) {
     console.error("Error fetching pending posts:", error);
+    throw error;
+  }
+}
+
+/**
+ * নির্দিষ্ট আইডির একটি পোস্ট আনা
+ * (বিস্তারিত পোস্ট পেজ ও শেয়ার লিংকের জন্য)
+ * @param {string} postId - পোস্টের আইডি
+ * @returns {Promise<Object|null>} পোস্ট অবজেক্ট, না পেলে null
+ */
+export async function getPostById(postId) {
+  try {
+    const snap = await getDoc(doc(db, "Posts", postId));
+    if (!snap.exists()) {
+      return null;
+    }
+    return {
+      id: snap.id,
+      ...snap.data()
+    };
+  } catch (error) {
+    console.error("Error fetching post:", error);
+    throw error;
+  }
+}
+
+/**
+ * সব Published পোস্ট আনা (সার্চের জন্য)
+ * @returns {Promise<Array>} নতুন পোস্ট আগে
+ */
+export async function getAllPublishedPosts() {
+  try {
+    const q = query(collection(db, "Posts"), where("status", "==", "published"));
+    const querySnapshot = await getDocs(q);
+    const posts = [];
+
+    querySnapshot.forEach((doc) => {
+      posts.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+
+    // নতুন পোস্ট সবার আগে
+    posts.sort((a, b) => {
+      const timeA = (a.createdAt && a.createdAt.seconds) ? a.createdAt.seconds : 0;
+      const timeB = (b.createdAt && b.createdAt.seconds) ? b.createdAt.seconds : 0;
+      return timeB - timeA;
+    });
+
+    return posts;
+  } catch (error) {
+    console.error("Error fetching all posts:", error);
     throw error;
   }
 }
