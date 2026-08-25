@@ -382,31 +382,20 @@
   const adminButton =
     document.createElement("button");
 
-
-  adminButton.innerHTML = "🔐";
-
-  adminButton.title =
-    "Admin Panel";
-
-
-  adminButton.style.cssText = `
-    position:fixed;
-    bottom:20px;
-    right:20px;
-    z-index:3000;
-    width:50px;
-    height:50px;
-    border:none;
-    border-radius:50%;
-    background:#334155;
-    color:white;
-    font-size:22px;
-    cursor:pointer;
-    box-shadow:0 4px 15px rgba(0,0,0,.4);
+  adminButton.className = "dock-btn";
+  adminButton.setAttribute("data-accent", "admin");
+  adminButton.setAttribute("data-tip", "অ্যাডমিন প্যানেল");
+  adminButton.title = "অ্যাডমিন প্যানেল";
+  adminButton.innerHTML = `
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+      <rect x="4" y="11" width="16" height="9" rx="2"/>
+      <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+    </svg>
   `;
 
-
-  document.body.appendChild(adminButton);
+  document
+    .getElementById("floatingDock")
+    .appendChild(adminButton);
 
 
   /* =========================

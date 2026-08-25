@@ -251,3 +251,101 @@
         .portal-container { transform: scale(0.85); }  
         .site-title { font-size: 1.8rem; }  
     }
+
+/* =========================
+   ফ্লোটিং বাটন ডক
+   (সব বাটন এক জায়গায় গুছানো)
+========================= */
+
+.floating-dock {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 7px;
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.dock-btn {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .18s ease, color .18s ease, transform .18s ease;
+}
+
+.dock-btn svg {
+    display: block;
+}
+
+.dock-btn:hover {
+    transform: scale(1.08);
+    color: #e2e8f0;
+    background: rgba(148, 163, 184, 0.15);
+}
+
+.dock-btn[data-accent="add"]:hover {
+    background: rgba(16, 185, 129, 0.16);
+    color: #34d399;
+}
+
+.dock-btn[data-accent="search"]:hover {
+    background: rgba(56, 189, 248, 0.16);
+    color: #38bdf8;
+}
+
+.dock-btn[data-accent="about"]:hover {
+    background: rgba(245, 158, 11, 0.16);
+    color: #fbbf24;
+}
+
+.dock-btn[data-accent="admin"]:hover {
+    background: rgba(224, 82, 45, 0.16);
+    color: #fb923c;
+}
+
+/* হোভারে টুলটিপ (বাটনের বাম দিকে) */
+.dock-btn::after {
+    content: attr(data-tip);
+    position: absolute;
+    right: calc(100% + 12px);
+    top: 50%;
+    transform: translateY(-50%) translateX(6px);
+    background: #0f172a;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease;
+}
+
+.dock-btn:hover::after {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+}
+
+/* ছোট স্ক্রিনে টুলটিপ দরকার নেই */
+@media (max-width: 600px) {
+    .dock-btn::after { display: none; }
+}

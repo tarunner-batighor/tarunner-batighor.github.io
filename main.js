@@ -310,28 +310,46 @@
     handleHash();
 
     /* =========================
+       ফ্লোটিং বাটন ডক
+       (＋ সার্চ, অ্যাবাউট, অ্যাডমিন —
+        সব বাটন এক জায়গায় গুছানো)
+    ========================= */
+
+    const floatingDock = document.createElement('div');
+    floatingDock.className = "floating-dock";
+    floatingDock.id = "floatingDock";
+    document.body.appendChild(floatingDock);
+
+    /* ＋ নতুন পোস্ট বাটন */
+    const addPostBtn = document.createElement('button');
+    addPostBtn.id = "addPostBtn";
+    addPostBtn.className = "dock-btn";
+    addPostBtn.setAttribute("data-accent", "add");
+    addPostBtn.setAttribute("data-tip", "নতুন পোস্ট লিখুন");
+    addPostBtn.title = "নতুন পোস্ট লিখুন";
+    addPostBtn.innerHTML = `
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+            <path d="M12 5v14M5 12h14"/>
+        </svg>
+    `;
+    floatingDock.appendChild(addPostBtn);
+
+    /* =========================
        সার্চ 🔍
     ========================= */
 
     const searchButton = document.createElement('button');
-    searchButton.innerHTML = "🔍";
+    searchButton.className = "dock-btn";
+    searchButton.setAttribute("data-accent", "search");
+    searchButton.setAttribute("data-tip", "পোস্ট খুঁজুন");
     searchButton.title = "পোস্ট খুঁজুন";
-    searchButton.style.cssText = `
-        position:fixed;
-        top:80px;
-        right:20px;
-        z-index:1000;
-        width:50px;
-        height:50px;
-        border:none;
-        border-radius:50%;
-        background:#38bdf8;
-        color:white;
-        font-size:20px;
-        cursor:pointer;
-        box-shadow:0 4px 12px rgba(0,0,0,.3);
+    searchButton.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <circle cx="11" cy="11" r="7"/>
+            <path d="M21 21l-4.35-4.35"/>
+        </svg>
     `;
-    document.body.appendChild(searchButton);
+    floatingDock.appendChild(searchButton);
 
     let searchOverlay = null;
 
@@ -486,24 +504,18 @@
     ========================= */
 
     const aboutButton = document.createElement('button');
-    aboutButton.innerHTML = "ℹ️";
+    aboutButton.className = "dock-btn";
+    aboutButton.setAttribute("data-accent", "about");
+    aboutButton.setAttribute("data-tip", "আমাদের সম্পর্কে");
     aboutButton.title = "আমাদের সম্পর্কে";
-    aboutButton.style.cssText = `
-        position:fixed;
-        top:140px;
-        right:20px;
-        z-index:1000;
-        width:50px;
-        height:50px;
-        border:none;
-        border-radius:50%;
-        background:#f59e0b;
-        color:white;
-        font-size:22px;
-        cursor:pointer;
-        box-shadow:0 4px 12px rgba(0,0,0,.3);
+    aboutButton.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M12 11v5"/>
+            <path d="M12 7.5v.01"/>
+        </svg>
     `;
-    document.body.appendChild(aboutButton);
+    floatingDock.appendChild(aboutButton);
 
     aboutButton.addEventListener('click', function() {
         const overlay = document.createElement('div');
