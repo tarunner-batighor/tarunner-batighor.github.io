@@ -60,7 +60,6 @@
         portalContainer.classList.remove('open');
         wheelStart();
         isMenuOpen = false;
-        hintText.innerText = '👆 বাতিঘরে স্পর্শ করুন';
         if (location.hash) {
             history.replaceState(null, '', location.pathname);
         }
@@ -127,11 +126,9 @@
         if (isMenuOpen) {
             portalContainer.classList.add('open');
             wheelStop();
-            hintText.innerText = '✨ যে পাপড়িটি পড়তে চান, বেছে নিন';
         } else {
             portalContainer.classList.remove('open');
             wheelStart();
-            hintText.innerText = '👆 বাতিঘরে স্পর্শ করুন';
         }
     });
 

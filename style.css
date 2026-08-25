@@ -159,35 +159,35 @@ body::before {
     --c: #34d399;
     --g: rgba(52, 211, 153, .3);
     background: linear-gradient(135deg, #10b981, #047857);
-    transform: rotate(0deg);
+    transform: rotate(45deg);
 }
 
 .b-2 {
     --c: #38bdf8;
     --g: rgba(56, 189, 248, .3);
     background: linear-gradient(135deg, #38bdf8, #0369a1);
-    transform: rotate(72deg);
+    transform: rotate(117deg);
 }
 
 .b-3 {
     --c: #f87171;
     --g: rgba(248, 113, 113, .3);
     background: linear-gradient(135deg, #f87171, #b91c1c);
-    transform: rotate(144deg);
+    transform: rotate(189deg);
 }
 
 .b-4 {
     --c: #a78bfa;
     --g: rgba(167, 139, 250, .3);
     background: linear-gradient(135deg, #a78bfa, #6d28d9);
-    transform: rotate(216deg);
+    transform: rotate(261deg);
 }
 
 .b-5 {
     --c: #fbbf24;
     --g: rgba(251, 191, 36, .3);
     background: linear-gradient(135deg, #fbbf24, #b45309);
-    transform: rotate(288deg);
+    transform: rotate(333deg);
 }
 
 /* ---- ক্যাটাগরি বৃত্ত (পাপড়ির ডগায়) ---- */
@@ -195,8 +195,8 @@ body::before {
     position: absolute;
     width: 84px;
     height: 84px;
-    top: 52px;
-    left: 52px;
+    top: 48px;
+    left: 48px;
     border-radius: 50%;
     background: rgba(15, 23, 42, .93);
     border: 2px solid var(--c);
@@ -230,11 +230,11 @@ body::before {
 
 .portal-container.open .circle-menu-item { opacity: 1; }
 
-.portal-container.open .b-1 .circle-menu-item { transform: scale(1) rotate(0deg); }
-.portal-container.open .b-2 .circle-menu-item { transform: scale(1) rotate(-72deg); transition-delay: .05s; }
-.portal-container.open .b-3 .circle-menu-item { transform: scale(1) rotate(-144deg); transition-delay: .1s; }
-.portal-container.open .b-4 .circle-menu-item { transform: scale(1) rotate(-216deg); transition-delay: .15s; }
-.portal-container.open .b-5 .circle-menu-item { transform: scale(1) rotate(-288deg); transition-delay: .2s; }
+.portal-container.open .b-1 .circle-menu-item { transform: scale(1) rotate(-45deg); }
+.portal-container.open .b-2 .circle-menu-item { transform: scale(1) rotate(-117deg); transition-delay: .05s; }
+.portal-container.open .b-3 .circle-menu-item { transform: scale(1) rotate(-189deg); transition-delay: .1s; }
+.portal-container.open .b-4 .circle-menu-item { transform: scale(1) rotate(-261deg); transition-delay: .15s; }
+.portal-container.open .b-5 .circle-menu-item { transform: scale(1) rotate(-333deg); transition-delay: .2s; }
 
 /* ---- ঘূর্ণায়মান রাডার রিং ---- */
 .beacon-radar {
@@ -347,11 +347,8 @@ body::before {
 
 /* ---- হিন্ট টেক্সট ---- */
 .hint-text {
-    align-self: stretch;
     margin-top: 30px;
-    padding-left: calc(50% + 30px);
-    text-align: left;
-    white-space: nowrap;
+    text-align: center;
     color: #fbbf24;
     font-size: 1rem;
     font-weight: 600;
@@ -371,12 +368,14 @@ body::before {
         height: 385px;
         margin: -18px auto;
     }
+}
 
-    .hint-text {
-        padding-left: 0;
-        text-align: center;
-        font-size: .9rem;
+@media (max-width: 360px) {
+    .portal-container {
+        transform: scale(.72);
+        height: 360px;
     }
+
 }
 
 /* ---- গতি কমানোর পছন্দ ---- */
