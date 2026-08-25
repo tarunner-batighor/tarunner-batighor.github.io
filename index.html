@@ -943,7 +943,7 @@ const module =
         ">
 
           <h3>
-            📝 Pending Posts
+            🗂️ পোস্ট ম্যানেজমেন্ট
           </h3>
 
 
@@ -964,7 +964,58 @@ const module =
         </div>
 
 
+        <!-- TABS -->
+
+        <div style="
+          display:flex;
+          gap:10px;
+          margin-bottom:20px;
+        ">
+
+          <button
+            id="tabPendingBtn"
+            style="
+              flex:1;
+              padding:12px;
+              border:none;
+              border-radius:9px;
+              background:#38bdf8;
+              color:#0f172a;
+              cursor:pointer;
+              font-weight:bold;
+              font-size:15px;
+            "
+          >
+            📝 Pending পোস্ট
+          </button>
+
+
+          <button
+            id="tabPublishedBtn"
+            style="
+              flex:1;
+              padding:12px;
+              border:none;
+              border-radius:9px;
+              background:#334155;
+              color:white;
+              cursor:pointer;
+              font-weight:bold;
+              font-size:15px;
+            "
+          >
+            ✅ Published পোস্ট
+          </button>
+
+        </div>
+
+
         <div id="pendingPosts">
+          Loading...
+        </div>
+
+
+        <div id="publishedPosts" style="display:none;">
           Loading...
         </div>
 
@@ -1005,6 +1056,82 @@ const module =
         adminPanel.style.display =
           "none";
 
+      }
+    );
+
+  /* =========================
+     ADMIN TABS (Pending / Published)
+  ========================= */
+
+  function switchAdminTab(tab) {
+
+    const pendingDiv =
+      document.getElementById(
+        "pendingPosts"
+      );
+
+    const publishedDiv =
+      document.getElementById(
+        "publishedPosts"
+      );
+
+    const pendingBtn =
+      document.getElementById(
+        "tabPendingBtn"
+      );
+
+    const publishedBtn =
+      document.getElementById(
+        "tabPublishedBtn"
+      );
+
+    if (tab === "published") {
+
+      pendingDiv.style.display = "none";
+      publishedDiv.style.display = "block";
+
+      pendingBtn.style.background = "#334155";
+      pendingBtn.style.color = "white";
+
+      publishedBtn.style.background = "#38bdf8";
+      publishedBtn.style.color = "#0f172a";
+
+      loadPublishedPostsAdmin();
+
+    } else {
+
+      pendingDiv.style.display = "block";
+      publishedDiv.style.display = "none";
+
+      pendingBtn.style.background = "#38bdf8";
+      pendingBtn.style.color = "#0f172a";
+
+      publishedBtn.style.background = "#334155";
+      publishedBtn.style.color = "white";
+
+      loadPendingPosts();
+
+    }
+
+  }
+
+
+  document
+    .getElementById("tabPendingBtn")
+    .addEventListener(
+      "click",
+      () => {
+        switchAdminTab("pending");
+      }
+    );
+
+
+  document
+    .getElementById("tabPublishedBtn")
+    .addEventListener(
+      "click",
+      () => {
+        switchAdminTab("published");
       }
     );
 
@@ -1120,7 +1247,7 @@ const module =
         adminArea.style.display =
           "block";
 
-        loadPendingPosts();
+        switchAdminTab("pending");
 
       } else {
 
@@ -1463,6 +1590,333 @@ const module =
         ">
 
           ❌ Pending পোস্ট লোড করা যায়নি।
+
+          <br><br>
+
+          ${escapeHtml(
+            error.message
+          )}
+
+        </div>
+
+      `;
+
+    }
+
+  }
+
+
+  /* =========================
+     LOAD PUBLISHED POSTS (Admin)
+  ========================= */
+
+  async function loadPublishedPostsAdmin() {
+
+    const container =
+      document.getElementById(
+        "publishedPosts"
+      );
+
+    container.innerHTML =
+      "<p>Published পোস্ট খোঁজা হচ্ছে...</p>";
+
+    try {
+
+      const q =
+        query(
+          collection(db, "Posts"),
+          where(
+            "status",
+            "==",
+            "published"
+          )
+        );
+
+      const snapshot =
+        await getDocs(q);
+
+      if (snapshot.empty) {
+
+        container.innerHTML = `
+
+          <div style="
+            background:#1e293b;
+            padding:20px;
+            border-radius:12px;
+            text-align:center;
+          ">
+
+            ✅ কোনো Published পোস্ট নেই।
+
+          </div>
+
+        `;
+
+        return;
+
+      }
+
+      container.innerHTML = "";
+
+
+      /* নতুন পোস্ট আগে দেখানো */
+
+      const docs = [];
+
+      snapshot.forEach(
+        (postDoc) => {
+          docs.push(postDoc);
+        }
+      );
+
+      docs.sort((a, b) => {
+        const ca =
+          (a.data().createdAt &&
+            a.data().createdAt.seconds) ||
+          0;
+
+        const cb =
+          (b.data().createdAt &&
+            b.data().createdAt.seconds) ||
+          0;
+
+        return cb - ca;
+      });
+
+
+      docs.forEach(
+        (postDoc) => {
+
+          const post =
+            postDoc.data();
+
+          let date = "";
+
+          if (
+            post.createdAt &&
+            post.createdAt.seconds
+          ) {
+            date = new Date(
+              post.createdAt.seconds * 1000
+            ).toLocaleDateString("bn-BD");
+          }
+
+          const card =
+            document.createElement(
+              "div"
+            );
+
+          card.style.cssText = `
+            background:#ffffff;
+            color:#0f172a;
+            padding:20px;
+            border-radius:15px;
+            margin-bottom:20px;
+            border:2px solid #10b981;
+          `;
+
+          card.innerHTML = `
+
+            <h3 style="
+              margin-bottom:10px;
+            ">
+              ${escapeHtml(
+                post.title ||
+                "Untitled"
+              )}
+            </h3>
+
+            <p style="
+              margin-bottom:6px;
+              color:#64748b;
+            ">
+              Category:
+              <strong>
+                ${getCategoryName(
+                  post.category
+                )}
+              </strong>
+            </p>
+
+            <p style="
+              margin-bottom:12px;
+              color:#94a3b8;
+              font-size:0.9em;
+            ">
+              📅 ${date}
+            </p>
+
+            <p style="
+              color:#475569;
+              line-height:1.6;
+              white-space:pre-line;
+              margin-bottom:15px;
+            ">
+              ${escapeHtml(
+                post.content || ""
+              )}
+            </p>
+
+            <div style="
+              display:flex;
+              gap:10px;
+              flex-wrap:wrap;
+            ">
+
+              <button
+                class="unpublishBtn"
+                style="
+                  background:#f59e0b;
+                  color:white;
+                  border:none;
+                  padding:10px 16px;
+                  border-radius:8px;
+                  cursor:pointer;
+                  font-weight:bold;
+                "
+              >
+                ↩️ Unpublish
+              </button>
+
+              <button
+                class="publishedDeleteBtn"
+                style="
+                  background:#ef4444;
+                  color:white;
+                  border:none;
+                  padding:10px 16px;
+                  border-radius:8px;
+                  cursor:pointer;
+                  font-weight:bold;
+                "
+              >
+                🗑 Delete
+              </button>
+
+            </div>
+          `;
+
+          /* =========================
+             UNPUBLISH
+          ========================= */
+
+          card
+            .querySelector(
+              ".unpublishBtn"
+            )
+            .addEventListener(
+              "click",
+              async () => {
+
+                if (
+                  !confirm(
+                    "এই Published পোস্টটি কি Pending অবস্থায় ফিরিয়ে নিতে চান?"
+                  )
+                ) {
+                  return;
+                }
+
+                try {
+                  await updateDoc(
+                    doc(
+                      db,
+                      "Posts",
+                      postDoc.id
+                    ),
+                    {
+                      status:
+                        "pending"
+                    }
+                  );
+
+                  alert(
+                    "↩️ পোস্টটি Pending অবস্থায় ফিরে গেছে।"
+                  );
+
+                  loadPublishedPostsAdmin();
+
+                } catch (error) {
+                  console.error(error);
+                  alert(
+                    "❌ Unpublish করা যায়নি:\n\n" +
+                    error.message
+                  );
+                }
+
+              }
+            );
+
+          /* =========================
+             DELETE (Published)
+          ========================= */
+
+          card
+            .querySelector(
+              ".publishedDeleteBtn"
+            )
+            .addEventListener(
+              "click",
+              async () => {
+
+                if (
+                  !confirm(
+                    "এই Published পোস্টটি কি সত্যিই Delete করতে চান?\n\nসাইট থেকে সরে যাবে।"
+                  )
+                ) {
+                  return;
+                }
+
+                try {
+                  await updateDoc(
+                    doc(
+                      db,
+                      "Posts",
+                      postDoc.id
+                    ),
+                    {
+                      status:
+                        "deleted"
+                    }
+                  );
+
+                  alert(
+                    "🗑 পোস্টটি মুছে ফেলা হয়েছে।"
+                  );
+
+                  loadPublishedPostsAdmin();
+
+                } catch (error) {
+                  console.error(error);
+                  alert(
+                    "❌ Delete করা যায়নি:\n\n" +
+                    error.message
+                  );
+                }
+
+              }
+            );
+
+          container.appendChild(
+            card
+          );
+
+        }
+      );
+
+    } catch (error) {
+
+      console.error(error);
+
+      container.innerHTML = `
+
+        <div style="
+          background:#450a0a;
+          padding:20px;
+          border-radius:12px;
+          color:#fecaca;
+        ">
+
+          ❌ Published পোস্ট লোড করা যায়নি।
 
           <br><br>
 
