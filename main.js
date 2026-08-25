@@ -58,7 +58,7 @@
         hintText.style.display = 'block';
         subTitle.style.display = 'block';
         portalContainer.classList.remove('open');
-        pinwheel.classList.remove('paused');
+        wheelStart();
         isMenuOpen = false;
         hintText.innerText = '👆 বাতিঘরে স্পর্শ করুন';
         if (location.hash) {
@@ -71,17 +71,66 @@
        পিনহুইল মেনু
     ========================= */
 
-    pinwheel.addEventListener('click', function(e) {
+    /* =========================
+       ফিরকির ঘূর্ণন
+       (JS দিয়ে নিয়ন্ত্রিত — খোলা
+        হলে সোজা হয়ে থামবে,
+        বন্ধ হলে আবার ঘুরবে)
+    ========================= */
+
+    let wheelAngle = 0;
+    let wheelTarget = null;
+    let wheelSpinning = true;
+    let lastFrame = null;
+
+    const WHEEL_SPEED = 360 / 16; /* ১৬ সেকেন্ডে এক পাক */
+
+    function wheelFrame(now) {
+        if (lastFrame === null) lastFrame = now;
+        const dt = Math.min((now - lastFrame) / 1000, 0.05);
+        lastFrame = now;
+
+        if (wheelTarget !== null) {
+            const diff = wheelTarget - wheelAngle;
+            if (Math.abs(diff) < 0.3) {
+                wheelAngle = wheelTarget % 360;
+                wheelTarget = null;
+            } else {
+                wheelAngle += diff * Math.min(1, dt * 6);
+            }
+        } else if (wheelSpinning) {
+            wheelAngle = (wheelAngle + WHEEL_SPEED * dt) % 360;
+        }
+
+        pinwheel.style.transform = 'rotate(' + wheelAngle.toFixed(2) + 'deg)';
+        requestAnimationFrame(wheelFrame);
+    }
+
+    requestAnimationFrame(wheelFrame);
+
+    /* সবচেয়ে কাছের পূর্ণ পাকে স্থির — পাপড়িগুলো সোজা থাকবে */
+    function wheelStop() {
+        wheelTarget = Math.round(wheelAngle / 360) * 360;
+        wheelSpinning = false;
+    }
+
+    function wheelStart() {
+        wheelTarget = null;
+        wheelSpinning = true;
+    }
+
+    /* ---- স্পর্শ করলে খোলা/বন্ধ ---- */
+    portalContainer.addEventListener('click', function(e) {
         if (e.target.closest('.circle-menu-item')) return;
 
         isMenuOpen = !isMenuOpen;
         if (isMenuOpen) {
             portalContainer.classList.add('open');
-            pinwheel.classList.add('paused');
+            wheelStop();
             hintText.innerText = '✨ যে পাপড়িটি পড়তে চান, বেছে নিন';
         } else {
             portalContainer.classList.remove('open');
-            pinwheel.classList.remove('paused');
+            wheelStart();
             hintText.innerText = '👆 বাতিঘরে স্পর্শ করুন';
         }
     });

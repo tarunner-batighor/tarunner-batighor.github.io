@@ -32,16 +32,49 @@
 </header>
 
 <div class="portal-container" id="portalContainer">
-    <div class="pinwheel" id="pinwheel" role="button" aria-label="ক্যাটাগরি মেনু">
+
+        <div class="stick"></div>
 
         <div class="beacon-radar"></div>
-
         <div class="beacon-pulse p1"></div>
         <div class="beacon-pulse p2"></div>
         <div class="beacon-pulse p3"></div>
 
+        <div class="pinwheel" id="pinwheel">
+            <div class="blade b-1">
+                <div class="circle-menu-item" data-cat="ayat" data-name="আয়াত ও হাদিস">
+                    <span class="mi-icon">📖</span>
+                    <span class="mi-text">আয়াত ও হাদিস</span>
+                </div>
+            </div>
+            <div class="blade b-2">
+                <div class="circle-menu-item" data-cat="atheism" data-name="নাস্তিকতার জবাব">
+                    <span class="mi-icon">💭</span>
+                    <span class="mi-text">নাস্তিকতার জবাব</span>
+                </div>
+            </div>
+            <div class="blade b-3">
+                <div class="circle-menu-item" data-cat="protest" data-name="প্রতিবাদ">
+                    <span class="mi-icon">✊</span>
+                    <span class="mi-text">প্রতিবাদ</span>
+                </div>
+            </div>
+            <div class="blade b-4">
+                <div class="circle-menu-item" data-cat="biography" data-name="জীবনী">
+                    <span class="mi-icon">🌟</span>
+                    <span class="mi-text">জীবনী</span>
+                </div>
+            </div>
+            <div class="blade b-5">
+                <div class="circle-menu-item" data-cat="story" data-name="গল্প-উপন্যাস">
+                    <span class="mi-icon">📚</span>
+                    <span class="mi-text">গল্প-উপন্যাস</span>
+                </div>
+            </div>
+        </div>
+
         <button class="beacon-core" type="button" aria-label="মেনু খুলুন বা বন্ধ করুন">
-            <svg class="fp-icon" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <svg class="fp-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
                 <path d="M12 6c-3.9 0-7 2.9-7 6.5 0 1.5.4 2.9 1.2 4.1"/>
                 <path d="M12 6c3.9 0 7 2.9 7 6.5 0 2.1-.6 4-1.7 5.6"/>
                 <path d="M12 9c-2.2 0-4 1.6-4 3.6 0 1 .3 2 .8 2.8"/>
@@ -50,31 +83,14 @@
                 <path d="M12 12c1 0 1.8.7 1.8 1.6"/>
                 <path d="M12 15.5v3.5"/>
             </svg>
-            <svg class="fp-close" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <svg class="fp-close" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
                 <path d="M6 6l12 12M18 6L6 18"/>
             </svg>
             <span class="core-label lbl-closed">স্পর্শ করুন</span>
             <span class="core-label lbl-open">বন্ধ করুন</span>
         </button>
 
-        <button class="circle-menu-item mi-ayat" type="button" data-cat="ayat" data-name="আয়াত ও হাদিস">
-            <span class="mi-icon">📖</span><span class="mi-text">আয়াত ও হাদিস</span>
-        </button>
-        <button class="circle-menu-item mi-atheism" type="button" data-cat="atheism" data-name="নাস্তিকতার জবাব">
-            <span class="mi-icon">💭</span><span class="mi-text">নাস্তিকতার জবাব</span>
-        </button>
-        <button class="circle-menu-item mi-protest" type="button" data-cat="protest" data-name="প্রতিবাদ">
-            <span class="mi-icon">✊</span><span class="mi-text">প্রতিবাদ</span>
-        </button>
-        <button class="circle-menu-item mi-biography" type="button" data-cat="biography" data-name="জীবনী">
-            <span class="mi-icon">🌟</span><span class="mi-text">জীবনী</span>
-        </button>
-        <button class="circle-menu-item mi-story" type="button" data-cat="story" data-name="গল্প-উপন্যাস">
-            <span class="mi-icon">📚</span><span class="mi-text">গল্প-উপন্যাস</span>
-        </button>
-
     </div>
-</div>
 
 <p class="hint-text" id="hintText">👆 বাতিঘরে স্পর্শ করুন</p>  
 
