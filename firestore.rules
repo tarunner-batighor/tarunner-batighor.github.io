@@ -1,0 +1,47 @@
+rules_version = '2';
+
+// ============================================================
+//  তারুণ্যের বাতিঘর — Firestore Security Rules
+//  এই নিয়মগুলো Firebase Console-এ প্রয়োগ করতে হবে:
+//  Firebase Console → Firestore Database → Rules → নিচের কোড
+//  পেস্ট করে → Publish
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Admin কিনা যাচাই — শুধু নির্দিষ্ট ইমেইলের
+    // লগইন করা ব্যবহারকারীই Admin
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'abdulhadibinmasud775@gmail.com';
+    }
+
+    match /Posts/{postId} {
+
+      // পড়া (read):
+      //   - সবাই শুধু 'published' পোস্ট পড়তে পারবে
+      //   - Admin সব পোস্ট পড়তে পারবেন (pending/deleted সহ)
+      allow get, list: if resource.data.status == 'published' || isAdmin();
+
+      // নতুন পোস্ট জমা দেওয়া (create):
+      //   - যে কেউ পোস্ট জমা দিতে পারবে,
+      //     কিন্তু শুধুমাত্র 'pending' অবস্থায় —
+      //     কেউ সরাসরি 'published' লিখে দিতে পারবে না
+      allow create: if request.resource.data.status == 'pending'
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 300
+        && request.resource.data.content is string
+        && request.resource.data.content.size() > 0
+        && request.resource.data.content.size() <= 100000
+        && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() <= 50;
+
+      // পোস্ট বদলানো বা মোছা (update/delete):
+      //   - শুধুমাত্র Admin পারবেন
+      allow update, delete: if isAdmin();
+    }
+  }
+}

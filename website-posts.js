@@ -42,7 +42,14 @@ export async function getPublishedPosts(category) {
         ...doc.data()
       });
     });
-    
+
+    // নতুন পোস্ট সবার আগে দেখানো (createdAt অনুযায়ী নামানো ক্রম)
+    posts.sort((a, b) => {
+      const timeA = (a.createdAt && a.createdAt.seconds) ? a.createdAt.seconds : 0;
+      const timeB = (b.createdAt && b.createdAt.seconds) ? b.createdAt.seconds : 0;
+      return timeB - timeA;
+    });
+
     return posts;
   } catch (error) {
     console.error("Error fetching posts:", error);

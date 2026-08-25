@@ -1,21 +1,18 @@
-# Security Policy
+# Security Policy — তারুণ্যের বাতিঘর
 
-## Supported Versions
+## নিরাপত্তা কীভাবে রক্ষা করা হয়
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+- **পাবলিক কনটেন্ট:** সবাই শুধু `published` অবস্থার পোস্ট পড়তে পারে।
+- **পোস্ট জমা:** যে কেউ নতুন পোস্ট জমা দিতে পারে, কিন্তু সেটি সবসময় `pending` অবস্থায় থাকে — Admin অনুমোদন ছাড়া কিছুই প্রকাশিত হয় না।
+- **অ্যাডমিন অ্যাকশন:** পোস্ট publish/update/delete শুধুমাত্র Admin (নির্দিষ্ট ইমেইলের Firebase Auth ব্যবহারকারী) করতে পারেন।
+- **XSS সুরক্ষা:** ওয়েবসাইটে পোস্ট দেখানোর আগে সব লেখা `escapeHtml()` দিয়ে পরিষ্কার করা হয়।
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+Firestore-এর নিয়মগুলো রিপোর `firestore.rules` ফাইলে সংরক্ষিত আছে।
 
-## Reporting a Vulnerability
+## দুর্বলতা রিপোর্ট করতে চাইলে
 
-Use this section to tell people how to report a vulnerability.
+আমাদের জানান:
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+- **Email:** abdulhadibinmasud775@gmail.com
+
+রিপোর্টে সমস্যার বিবরণ ও পুনরায় তৈরি করার ধাপগুলো লিখুন। গ্রহণযোগ্য রিপোর্টের আপডেটের জন্য ৭ দিনের মধ্যে উত্তর দেওয়া হবে।

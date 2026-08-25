@@ -298,6 +298,13 @@
 
     let isMenuOpen = false;  
 
+    /* HTML SECURITY - পোস্টের লেখা থেকে ক্ষতিকর কোড (XSS) আটকানো */
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = String(text ?? '');
+        return div.innerHTML;
+    }
+
     pinwheel.addEventListener('click', function(e) {  
     if (e.target.closest('.circle-menu-item')) return;  
 
@@ -380,17 +387,17 @@ const module =
                 <div class="post-card">
 
                     <h2 class="post-title">
-                        ${post.title || ""}
+                        ${escapeHtml(post.title || "")}
                     </h2>
 
                     <div class="post-content">
-                        ${post.content || ""}
+                        ${escapeHtml(post.content || "")}
                     </div>
 
                     <div class="post-footer">
 
                         <div class="post-tags">
-                            ${post.category || "সাধারণ"}
+                            ${escapeHtml(post.category || "সাধারণ")}
                         </div>
 
                         <div class="post-date">
@@ -429,6 +436,7 @@ const module =
     `;
 
 }
+    });  
     });  
 
     backBtn.addEventListener('click', function() {  
