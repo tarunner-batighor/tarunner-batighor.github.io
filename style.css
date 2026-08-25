@@ -107,7 +107,7 @@ body::before {
 .stick {
     position: absolute;
     width: 10px;
-    height: 203px;
+    height: 188px;
     left: 50%;
     top: 205px;
     transform: translateX(-50%);
@@ -347,11 +347,14 @@ body::before {
 
 /* ---- হিন্ট টেক্সট ---- */
 .hint-text {
-    margin-top: 14px;
+    align-self: stretch;
+    margin-top: 30px;
+    padding-left: calc(50% + 30px);
+    text-align: left;
+    white-space: nowrap;
     color: #fbbf24;
     font-size: 1rem;
     font-weight: 600;
-    text-align: center;
     letter-spacing: .5px;
     animation: hintGlow 2.4s ease-in-out infinite;
 }
@@ -365,8 +368,14 @@ body::before {
 @media (max-width: 480px) {
     .portal-container {
         transform: scale(.8);
-        height: 350px;
-        margin: -30px auto;
+        height: 385px;
+        margin: -18px auto;
+    }
+
+    .hint-text {
+        padding-left: 0;
+        text-align: center;
+        font-size: .9rem;
     }
 }
 
