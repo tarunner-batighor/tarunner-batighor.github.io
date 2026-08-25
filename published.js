@@ -1,4 +1,4 @@
-import { getApps, initializeApp } 
+import { getApps, initializeApp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
 import {
@@ -6,6 +6,7 @@ import {
   collection,
   getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyD97ZB_1H6JcZ6MzTHj39uJic3gFqJnH6o",
@@ -17,52 +18,39 @@ const firebaseConfig = {
   measurementId: "G-Y9L1BG62BL"
 };
 
+
 const app = getApps().length
   ? getApps()[0]
   : initializeApp(firebaseConfig);
 
 const db = getFirestore(app);
 
+
 export async function getPublishedPosts(category) {
 
-  try {
+  const snapshot = await getDocs(
+    collection(db, "Posts")
+  );
 
-    const snapshot =
-      await getDocs(
-        collection(db, "Posts")
-      );
+  const posts = [];
 
-    const posts = [];
+  snapshot.forEach((item) => {
 
-    snapshot.forEach((item) => {
+    const post = item.data();
 
-      const post = item.data();
+    if (
+      post.status === "published" &&
+      post.category === category
+    ) {
 
-      if (
-        post.status === "published" &&
-        post.category === category
-      ) {
+      posts.push({
+        id: item.id,
+        ...post
+      });
 
-        posts.push({
-          id: item.id,
-          ...post
-        });
+    }
 
-      }
+  });
 
-    });
-
-    return posts;
-
-  } catch (error) {
-
-    console.error(
-      "Published posts error:",
-      error
-    );
-
-    return [];
-
-  }
-
+  return posts;
 }
