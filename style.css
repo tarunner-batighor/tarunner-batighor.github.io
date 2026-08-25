@@ -1,153 +1,325 @@
-* {  
-            box-sizing: border-box;  
-            margin: 0;  
-            padding: 0;  
-        }  body {  
-        font-family: 'Segoe UI', Arial, sans-serif;  
-        background-color: #0f172a;  
-        color: #f8fafc;  
-        min-height: 100vh;  
-        display: flex;  
-        flex-direction: column;  
-        align-items: center;  
-        justify-content: center;  
-        overflow-x: hidden;  
-        padding: 20px;  
-    }  
+/* =========================
+   তারুণ্যের বাতিঘর — মূল স্টাইল
+========================= */
 
-    .site-title {  
-        font-size: 2.2rem;  
-        color: #38bdf8;  
-        margin-bottom: 5px;  
-        text-align: center;  
-        text-shadow: 0 2px 10px rgba(56, 189, 248, 0.3);  
-    }  
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
 
-    .site-subtitle {  
-        color: #94a3b8;  
-        font-size: 1rem;  
-        margin-bottom: 40px;  
-        text-align: center;  
-    }  
+body {
+    font-family: 'Hind Siliguri', 'Noto Sans Bengali', 'Segoe UI', Arial, sans-serif;
+    color: #f8fafc;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+    padding: 28px 16px;
+    background: radial-gradient(1100px 700px at 50% 18%, #17233f 0%, #0f172a 55%, #090e1c 100%);
+    background-attachment: fixed;
+}
 
-    .portal-container {  
-        position: relative;  
-        width: 340px;  
-        height: 340px;  
-        display: flex;  
-        align-items: center;  
-        justify-content: center;  
-        margin: 0 auto;  
-    }  
+/* ---- তারাভরা আকাশ ---- */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        radial-gradient(1.6px 1.6px at 12% 22%, rgba(255,255,255,.6), transparent 60%),
+        radial-gradient(1.2px 1.2px at 78% 12%, rgba(255,255,255,.45), transparent 60%),
+        radial-gradient(1.4px 1.4px at 32% 68%, rgba(255,255,255,.4), transparent 60%),
+        radial-gradient(1.1px 1.1px at 88% 44%, rgba(255,255,255,.5), transparent 60%),
+        radial-gradient(1.5px 1.5px at 55% 8%, rgba(255,255,255,.4), transparent 60%),
+        radial-gradient(1.1px 1.1px at 8% 82%, rgba(255,255,255,.35), transparent 60%),
+        radial-gradient(1.3px 1.3px at 65% 88%, rgba(255,255,255,.45), transparent 60%),
+        radial-gradient(1.2px 1.2px at 22% 44%, rgba(255,255,255,.35), transparent 60%),
+        radial-gradient(1.4px 1.4px at 92% 76%, rgba(255,255,255,.4), transparent 60%),
+        radial-gradient(1.1px 1.1px at 45% 34%, rgba(255,255,255,.3), transparent 60%);
+    animation: twinkle 4.5s ease-in-out infinite;
+}
 
-    .stick {  
-        position: absolute;  
-        width: 8px;  
-        height: 180px;  
-        background: linear-gradient(to bottom, #94a3b8, #334155);  
-        top: 170px;  
-        border-radius: 4px;  
-        z-index: 1;  
-    }  
+@keyframes twinkle {
+    0%, 100% { opacity: .45; }
+    50% { opacity: 1; }
+}
 
-    .pinwheel {  
-        position: relative;  
-        width: 200px;  
-        height: 200px;  
-        z-index: 2;  
-        cursor: pointer;  
-        animation: rotatePinwheel 6s linear infinite;  
-        transition: transform 0.5s ease;  
-    }  
+/* ---- হিরো হেডার ---- */
 
-    @keyframes rotatePinwheel {  
-        100% { transform: rotate(360deg); }  
-    }  
+.site-header {
+    text-align: center;
+    margin-bottom: 22px;
+}
 
-    .pinwheel.paused {  
-        animation-play-state: paused;  
-        transform: scale(0.95);  
-    }  
+.site-badge {
+    display: inline-block;
+    border: 1px solid rgba(148, 163, 184, .28);
+    color: #94a3b8;
+    font-size: .82rem;
+    letter-spacing: .6px;
+    padding: 6px 18px;
+    border-radius: 999px;
+    margin-bottom: 16px;
+    background: rgba(148, 163, 184, .07);
+}
 
-    .blade {  
-        position: absolute;  
-        width: 90px;  
-        height: 90px;  
-        border-radius: 0 100% 0 100%;  
-        display: flex;  
-        align-items: center;  
-        justify-content: center;  
-        box-shadow: inset 0 0 12px rgba(255,255,255,0.3);  
-        top: 50%;  
-        left: 50%;  
-        transform-origin: 0 0;  
-    }  
+.site-title {
+    font-family: 'Noto Serif Bengali', 'Times New Roman', serif;
+    font-weight: 900;
+    font-size: clamp(2.2rem, 7vw, 3.1rem);
+    line-height: 1.3;
+    background: linear-gradient(180deg, #fef3c7 0%, #fbbf24 55%, #f59e0b 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: #fbbf24;
+    filter: drop-shadow(0 4px 18px rgba(245, 158, 11, .22));
+    margin-bottom: 8px;
+}
 
-    .b-1 { background: #10b981; transform: rotate(0deg); }  
-    .b-2 { background: #ef4444; transform: rotate(72deg); }  
-    .b-3 { background: #3b82f6; transform: rotate(144deg); }  
-    .b-4 { background: #8b5cf6; transform: rotate(216deg); }  
-    .b-5 { background: #f59e0b; transform: rotate(288deg); }  
+.site-subtitle {
+    font-size: 1.02rem;
+    color: #cbd5e1;
+    letter-spacing: .3px;
+}
 
-    .center-pin {  
-        position: absolute;  
-        width: 28px;  
-        height: 28px;  
-        background: #ffffff;  
-        border: 4px solid #0f172a;  
-        border-radius: 50%;  
-        z-index: 20;  
-        top: 50%;  
-        left: 50%;  
-        transform: translate(-50%, -50%);  
-        box-shadow: 0 0 10px rgba(0,0,0,0.5);  
-    }  
+/* =========================
+   বাতিঘর-বাটন (ফিঙ্গারপ্রিন্ট)
+========================= */
 
-    .hint-text {  
-        margin-top: 30px;  
-        color: #38bdf8;  
-        font-size: 0.95rem;  
-        text-align: center;  
-        font-weight: 500;  
-    }  
+.portal-container {
+    position: relative;
+    width: 420px;
+    height: 420px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
 
-    .circle-menu-item {  
-        position: absolute;  
-        width: 80px;  
-        height: 80px;  
-        border-radius: 50%;  
-        display: flex;  
-        align-items: center;  
-        justify-content: center;  
-        font-size: 11px;  
-        font-weight: bold;  
-        color: #fff;  
-        text-align: center;  
-        cursor: pointer;  
-        z-index: 15;  
-        opacity: 0;  
-        transform: scale(0);  
-        transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);  
-        box-shadow: 0 6px 20px rgba(0,0,0,0.5);  
-        border: 3px solid rgba(255,255,255,0.6);  
-        padding: 5px;  
-        top: 45px;  
-        left: 45px;  
-    }  
+.pinwheel {
+    position: relative;
+    width: 400px;
+    height: 400px;
+    z-index: 2;
+}
 
-    .portal-container.open .circle-menu-item { opacity: 1; }  
+/* ---- ঘূর্ণায়মান রাডার রিং ---- */
+.beacon-radar {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 224px;
+    height: 224px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: conic-gradient(from 0deg, transparent 0deg, rgba(251, 191, 36, .4) 45deg, transparent 105deg);
+    -webkit-mask: radial-gradient(closest-side, transparent 76%, #000 80%, #000 90%, transparent 94%);
+    mask: radial-gradient(closest-side, transparent 76%, #000 80%, #000 90%, transparent 94%);
+    animation: radarSpin 7s linear infinite;
+    pointer-events: none;
+    z-index: 4;
+    opacity: .75;
+}
 
-    .b-1 .circle-menu-item { background: #10b981; transform: scale(0) rotate(0deg); }  
-    .b-2 .circle-menu-item { background: #ef4444; transform: scale(0) rotate(-72deg); }  
-    .b-3 .circle-menu-item { background: #3b82f6; transform: scale(0) rotate(-144deg); }  
-    .b-4 .circle-menu-item { background: #8b5cf6; transform: scale(0) rotate(-216deg); }  
-    .b-5 .circle-menu-item { background: #f59e0b; transform: scale(0) rotate(-288deg); }  
+@keyframes radarSpin {
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
 
-    .portal-container.open .b-1 .circle-menu-item { transform: scale(1) rotate(0deg); }  
-    .portal-container.open .b-2 .circle-menu-item { transform: scale(1) rotate(-72deg); }  
-    .portal-container.open .b-3 .circle-menu-item { transform: scale(1) rotate(-144deg); }  
-    .portal-container.open .b-4 .circle-menu-item { transform: scale(1) rotate(-216deg); }  
-    .portal-container.open .b-5 .circle-menu-item { transform: scale(1) rotate(-288deg); }  
+.portal-container.open .beacon-radar {
+    animation-play-state: paused;
+    opacity: .22;
+}
+
+/* ---- ছড়িয়ে পড়া আলোর বৃত্ত ---- */
+.beacon-pulse {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 118px;
+    height: 118px;
+    border-radius: 50%;
+    border: 2px solid rgba(251, 191, 36, .5);
+    transform: translate(-50%, -50%) scale(.9);
+    animation: beaconPulse 2.8s cubic-bezier(.2, .6, .35, 1) infinite;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.beacon-pulse.p2 { animation-delay: .93s; }
+.beacon-pulse.p3 { animation-delay: 1.86s; }
+
+@keyframes beaconPulse {
+    0% { transform: translate(-50%, -50%) scale(.9); opacity: 0; }
+    14% { opacity: .85; }
+    100% { transform: translate(-50%, -50%) scale(2.15); opacity: 0; }
+}
+
+.portal-container.open .beacon-pulse {
+    animation: none;
+    opacity: 0;
+}
+
+/* ---- কেন্দ্রের বাটন (ফিঙ্গারপ্রিন্ট) ---- */
+.beacon-core {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 118px;
+    height: 118px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #1e293b 0%, #0b1220 72%);
+    border: 2px solid rgba(251, 191, 36, .55);
+    color: #fbbf24;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    cursor: pointer;
+    z-index: 20;
+    box-shadow: 0 0 26px rgba(251, 191, 36, .22), inset 0 0 20px rgba(251, 191, 36, .07);
+    transition: transform .16s ease, box-shadow .25s ease, border-color .25s ease;
+    font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.beacon-core:hover {
+    border-color: rgba(251, 191, 36, .85);
+    box-shadow: 0 0 42px rgba(251, 191, 36, .38), inset 0 0 24px rgba(251, 191, 36, .12);
+}
+
+.beacon-core:active {
+    transform: translate(-50%, -50%) scale(.92);
+    box-shadow: 0 0 55px rgba(251, 191, 36, .55), inset 0 0 30px rgba(251, 191, 36, .2);
+}
+
+.beacon-core svg {
+    display: block;
+}
+
+.fp-close { display: none; }
+
+.portal-container.open .beacon-core .fp-icon { display: none; }
+.portal-container.open .beacon-core .fp-close { display: block; }
+
+.core-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .4px;
+    color: #fde68a;
+}
+
+.lbl-open { display: none; }
+.portal-container.open .lbl-open { display: inline; }
+.portal-container.open .lbl-closed { display: none; }
+
+/* ---- ক্যাটাগরি পিল ---- */
+.circle-menu-item {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 20px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, .94);
+    border: 1.5px solid var(--c, #94a3b8);
+    color: #f1f5f9;
+    font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    z-index: 15;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(.25);
+    transition: transform .55s cubic-bezier(.175, .885, .32, 1.4), opacity .35s ease, box-shadow .25s ease, filter .2s ease;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .45);
+    pointer-events: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.portal-container.open .circle-menu-item { pointer-events: auto; }
+
+.circle-menu-item:hover {
+    filter: brightness(1.18);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .5), 0 0 30px var(--g);
+}
+
+.mi-icon { font-size: 17px; line-height: 1; }
+
+/* প্রতিটির নিজস্ব রঙ */
+.mi-ayat      { --c: #34d399; --g: rgba(52, 211, 153, .3); }
+.mi-atheism   { --c: #38bdf8; --g: rgba(56, 189, 248, .3); }
+.mi-protest   { --c: #f87171; --g: rgba(248, 113, 113, .3); }
+.mi-biography { --c: #a78bfa; --g: rgba(167, 139, 250, .3); }
+.mi-story     { --c: #fbbf24; --g: rgba(251, 191, 36, .3); }
+
+/* খোলা অবস্থায় পাঁচ দিকে ছড়িয়ে যাওয়া */
+.portal-container.open .mi-ayat {
+    transform: translate(-50%, -50%) translate(0px, -118px) scale(1);
+    opacity: 1;
+}
+
+.portal-container.open .mi-atheism {
+    transform: translate(-50%, -50%) translate(112px, -36px) scale(1);
+    opacity: 1;
+    transition-delay: .05s;
+}
+
+.portal-container.open .mi-protest {
+    transform: translate(-50%, -50%) translate(69px, 95px) scale(1);
+    opacity: 1;
+    transition-delay: .1s;
+}
+
+.portal-container.open .mi-biography {
+    transform: translate(-50%, -50%) translate(-69px, 95px) scale(1);
+    opacity: 1;
+    transition-delay: .15s;
+}
+
+.portal-container.open .mi-story {
+    transform: translate(-50%, -50%) translate(-112px, -36px) scale(1);
+    opacity: 1;
+    transition-delay: .2s;
+}
+
+/* ---- হিন্ট টেক্সট ---- */
+.hint-text {
+    margin-top: 14px;
+    color: #fbbf24;
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: .5px;
+    animation: hintGlow 2.4s ease-in-out infinite;
+}
+
+@keyframes hintGlow {
+    0%, 100% { opacity: .8; }
+    50% { opacity: 1; text-shadow: 0 0 16px rgba(251, 191, 36, .5); }
+}
+
+/* ---- ছোট স্ক্রিন ---- */
+@media (max-width: 480px) {
+    .portal-container {
+        transform: scale(.8);
+        height: 350px;
+        margin: -30px auto;
+    }
+}
+
+/* ---- গতি কমানোর পছন্দ ---- */
+@media (prefers-reduced-motion: reduce) {
+    .beacon-pulse, .beacon-radar, .hint-text, body::before { animation: none; }
+}
 
     .content-container {  
         display: none;  
@@ -181,10 +353,11 @@
     .back-btn:hover { background: #c84320; }  
 
     .category-header-title {  
-        font-size: 1.8rem;  
+        font-family: 'Noto Serif Bengali', serif;  
+        font-size: 1.9rem;  
         color: #ffffff;  
         margin-bottom: 20px;  
-        font-weight: bold;  
+        font-weight: 700;  
     }  
 
     .post-card {  
@@ -206,10 +379,11 @@
     }  
 
     .post-card .post-title {  
+        font-family: 'Noto Serif Bengali', serif;  
         font-size: 1.5rem;  
         color: #0f172a;  
-        font-weight: 800;  
-        line-height: 1.3;  
+        font-weight: 700;  
+        line-height: 1.35;  
         margin-bottom: 14px;  
     }  
 

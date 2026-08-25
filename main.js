@@ -60,7 +60,7 @@
         portalContainer.classList.remove('open');
         pinwheel.classList.remove('paused');
         isMenuOpen = false;
-        hintText.innerText = '|| প্রতিটি পাপড়ি, একেকটি ভাবনার দুয়ার ||';
+        hintText.innerText = '👆 বাতিঘরে স্পর্শ করুন';
         if (location.hash) {
             history.replaceState(null, '', location.pathname);
         }
@@ -78,11 +78,11 @@
         if (isMenuOpen) {
             portalContainer.classList.add('open');
             pinwheel.classList.add('paused');
-            hintText.innerText = '✨ কী পড়বেন? সিদ্ধান্ত আপনার!';
+            hintText.innerText = '✨ যে পাপড়িটি পড়তে চান, বেছে নিন';
         } else {
             portalContainer.classList.remove('open');
             pinwheel.classList.remove('paused');
-            hintText.innerText = '|| প্রতিটি পাপড়ি, একেকটি ভাবনার দুয়ার ||';
+            hintText.innerText = '👆 বাতিঘরে স্পর্শ করুন';
         }
     });
 
@@ -284,7 +284,7 @@
             if (location.hash) {
                 history.replaceState(null, '', location.pathname);
             }
-            showCategory(category, this.innerText.trim());
+            showCategory(category, this.getAttribute('data-name') || this.innerText.trim());
         });
     });
 
