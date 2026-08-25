@@ -1,6 +1,4 @@
-import { initializeApp }
-  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore,
   collection,
@@ -9,7 +7,6 @@ import {
   deleteDoc,
   doc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
 
 // =========================
 // FIREBASE CONFIG
@@ -25,14 +22,12 @@ const firebaseConfig = {
   measurementId: "G-Y9L1BG62BL"
 };
 
-
 // =========================
 // FIREBASE START
 // =========================
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
 
 // =========================
 // ADMIN PANEL
@@ -61,39 +56,26 @@ document.body.innerHTML = `
   </div>
 `;
 
-
 // =========================
 // LOAD PENDING POSTS
 // =========================
 
 async function loadPosts() {
-
-  const container =
-    document.getElementById("posts");
+  const container = document.getElementById("posts");
 
   try {
-
-    const snapshot =
-      await getDocs(
-        collection(db, "Posts")
-      );
+    const snapshot = await getDocs(collection(db, "Posts"));
 
     container.innerHTML = "";
-
     let found = false;
 
     snapshot.forEach((item) => {
-
       const post = item.data();
 
-      if (post.status !== "pending") {
-        return;
-      }
+      if (post.status !== "pending") return;
 
       found = true;
-
-      const card =
-        document.createElement("div");
+      const card = document.createElement("div");
 
       card.style.cssText = `
         background:#ffffff;
@@ -105,9 +87,7 @@ async function loadPosts() {
         box-shadow:0 4px 12px rgba(0,0,0,.15);
       `;
 
-
       card.innerHTML = `
-
         <h2 style="margin-bottom:10px;">
           ${escapeHtml(post.title || "শিরোনাম নেই")}
         </h2>
@@ -168,14 +148,10 @@ async function loadPosts() {
         </div>
       `;
 
-
       container.appendChild(card);
-
     });
 
-
     if (!found) {
-
       container.innerHTML = `
         <div style="
           text-align:center;
@@ -185,114 +161,41 @@ async function loadPosts() {
           🎉 বর্তমানে কোনো Pending পোস্ট নেই।
         </div>
       `;
-
     }
 
-
-    // =========================
     // PUBLISH BUTTON
-    // =========================
-
-    document
-      .querySelectorAll(".publish-btn")
-      .forEach((button) => {
-
-        button.addEventListener(
-          "click",
-          async () => {
-
-            const id =
-              button.getAttribute("data-id");
-
-            try {
-
-              await updateDoc(
-                doc(db, "Posts", id),
-                {
-                  status: "published"
-                }
-              );
-
-              alert(
-                "✅ পোস্ট সফলভাবে Published হয়েছে!"
-              );
-
-              loadPosts();
-
-            } catch (error) {
-
-              console.error(error);
-
-              alert(
-                "❌ Publish করা যায়নি:\n" +
-                error.message
-              );
-
-            }
-
-          }
-        );
-
+    document.querySelectorAll(".publish-btn").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const id = button.getAttribute("data-id");
+        try {
+          await updateDoc(doc(db, "Posts", id), { status: "published" });
+          alert("✅ পোস্ট সফলভাবে Published হয়েছে!");
+          loadPosts();
+        } catch (error) {
+          console.error(error);
+          alert("❌ Publish করা যায়নি:\n" + error.message);
+        }
       });
+    });
 
-
-    // =========================
     // DELETE BUTTON
-    // =========================
-
-    document
-      .querySelectorAll(".delete-btn")
-      .forEach((button) => {
-
-        button.addEventListener(
-          "click",
-          async () => {
-
-            const id =
-              button.getAttribute("data-id");
-
-            const confirmDelete =
-              confirm(
-                "এই পোস্টটি কি সত্যিই Delete করতে চান?"
-              );
-
-            if (!confirmDelete) {
-              return;
-            }
-
-            try {
-
-              await deleteDoc(
-                doc(db, "Posts", id)
-              );
-
-              alert(
-                "🗑️ পোস্ট Delete হয়েছে!"
-              );
-
-              loadPosts();
-
-            } catch (error) {
-
-              console.error(error);
-
-              alert(
-                "❌ Delete করা যায়নি:\n" +
-                error.message
-              );
-
-            }
-
-          }
-        );
-
+    document.querySelectorAll(".delete-btn").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const id = button.getAttribute("data-id");
+        const confirmDelete = confirm("এই পোস্টটি কি সত্যিই Delete করতে চান?");
+        if (!confirmDelete) return;
+        try {
+          await deleteDoc(doc(db, "Posts", id));
+          alert("🗑️ পোস্ট Delete হয়েছে!");
+          loadPosts();
+        } catch (error) {
+          console.error(error);
+          alert("❌ Delete করা যায়নি:\n" + error.message);
+        }
       });
-
-
+    });
   } catch (error) {
-
     console.error(error);
-
     container.innerHTML = `
       <div style="
         color:#ef4444;
@@ -303,31 +206,15 @@ async function loadPosts() {
         ${escapeHtml(error.message)}
       </div>
     `;
-
   }
-
 }
 
-
-// =========================
 // HTML SECURITY
-// =========================
-
 function escapeHtml(text) {
-
-  const div =
-    document.createElement("div");
-
-  div.textContent =
-    String(text);
-
+  const div = document.createElement("div");
+  div.textContent = String(text);
   return div.innerHTML;
-
 }
 
-
-// =========================
 // START
-// =========================
-
 loadPosts();
