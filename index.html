@@ -4,6 +4,20 @@
     <meta name="google-site-verification" content="PVklQCflQ1leQWTMHnXAESU-vyPi4K3D8X8ytwZtm3M" />  
     <meta name="viewport" content="width=device-width, initial-scale=1.0">  
     <title>তারুণ্যের বাতিঘর</title>  
+    <meta name="description" content="তারুণ্যের কলমে, সত্যের কথা — আয়াত ও হাদিস, নাস্তিকতার জবাব, প্রতিবাদ, জীবনী, গল্প-উপন্যাস।">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+    <!-- সোশ্যাল শেয়ার কার্ড (Facebook / WhatsApp / Twitter) -->
+    <meta property="og:title" content="তারুণ্যের বাতিঘর">
+    <meta property="og:description" content="তারুণ্যের কলমে, সত্যের কথা — আয়াত ও হাদিস, নাস্তিকতার জবাব, প্রতিবাদ, জীবনী, গল্প-উপন্যাস।">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://tarunner-batighor.github.io/03/">
+    <meta property="og:image" content="https://tarunner-batighor.github.io/03/og-image.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="তারুণ্যের বাতিঘর">
+    <meta name="twitter:description" content="তারুণ্যের কলমে, সত্যের কথা।">
+    <meta name="twitter:image" content="https://tarunner-batighor.github.io/03/og-image.jpg">  
     <style>  
         * {  
             box-sizing: border-box;  
@@ -514,29 +528,10 @@ const module =
 
   addPostBtn.addEventListener("click", async () => {
 
-    const title =
-      prompt("পোস্টের শিরোনাম লিখুন:");
+    const result =
+      await openPostEditor(null);
 
-    if (!title || !title.trim()) {
-      return;
-    }
-
-
-    const content =
-      prompt("পোস্টের লেখা লিখুন:");
-
-    if (!content || !content.trim()) {
-      return;
-    }
-
-
-    /* =========================
-       CATEGORY SELECT
-    ========================= */
-
-    const category = await selectCategory();
-
-    if (!category) {
+    if (!result) {
       return;
     }
 
@@ -550,9 +545,9 @@ const module =
       await addDoc(
         collection(db, "Posts"),
         {
-          title: title.trim(),
-          content: content.trim(),
-          category: category,
+          title: result.title,
+          content: result.content,
+          category: result.category,
           status: "pending",
           createdAt: serverTimestamp()
         }
@@ -560,9 +555,9 @@ const module =
 
 
       alert(
-        "✅ পোস্ট জমা হয়েছে!\n\n" +
-        "পোস্টটি এখন Pending অবস্থায় আছে।\n\n" +
-        "Admin Publish করার পর এটি ওয়েবসাইটে দেখা যাবে।"
+        "✅ পোস্ট জমা হয়েছে!\n\n" +
+        "পোস্টটি এখন Pending অবস্থায় আছে।\n\n" +
+        "Admin Publish করার পর এটি ওয়েবসাইটে দেখা যাবে।"
       );
 
 
@@ -571,21 +566,25 @@ const module =
       console.error(error);
 
       alert(
-        "❌ পোস্ট সেভ হয়নি:\n\n" +
+        "❌ পোস্ট সেভ হয়নি:\n\n" +
         error.message
       );
+
     }
 
   });
 
 
   /* =========================
-     CATEGORY SELECT FUNCTION
+     POST EDITOR MODAL
+     (নতুন পোস্ট লেখা + সম্পাদনা)
   ========================= */
 
-  function selectCategory() {
+  function openPostEditor(existing) {
 
     return new Promise((resolve) => {
+
+      const isEdit = !!existing;
 
       const overlay =
         document.createElement("div");
@@ -607,7 +606,9 @@ const module =
 
         <div style="
           width:100%;
-          max-width:380px;
+          max-width:600px;
+          max-height:90vh;
+          overflow-y:auto;
           background:#1e293b;
           padding:25px;
           border-radius:18px;
@@ -620,12 +621,13 @@ const module =
             margin-bottom:20px;
             font-size:20px;
           ">
-            ক্যাটাগরি নির্বাচন করুন
+            ${isEdit ? "✏️ পোস্ট সম্পাদনা" : "✍️ নতুন পোস্ট লিখুন"}
           </h3>
 
-
-          <select
-            id="postCategorySelect"
+          <input
+            id="editorTitle"
+            type="text"
+            placeholder="পোস্টের শিরোনাম লিখুন..."
             style="
               width:100%;
               padding:14px;
@@ -635,15 +637,33 @@ const module =
               background:white;
               color:#0f172a;
               outline:none;
+              margin-bottom:12px;
+              box-sizing:border-box;
+              font-family:inherit;
+            "
+          >
+
+          <select
+            id="editorCategory"
+            style="
+              width:100%;
+              padding:14px;
+              border-radius:10px;
+              border:none;
+              font-size:16px;
+              background:white;
+              color:#0f172a;
+              outline:none;
+              margin-bottom:12px;
             "
           >
 
             <option value="">
-              -- একটি ক্যাটাগরি নির্বাচন করুন --
+              -- ক্যাটাগরি নির্বাচন করুন --
             </option>
 
             <option value="ayat">
-              আয়াত ও হাদিস
+              আয়াত ও হাদিস
             </option>
 
             <option value="atheism">
@@ -664,18 +684,46 @@ const module =
 
           </select>
 
+          <textarea
+            id="editorContent"
+            rows="10"
+            placeholder="আপনার লেখা এখানে লিখুন... প্যারাগ্রাফ আলাদা করতে Enter চাপুন"
+            style="
+              width:100%;
+              padding:14px;
+              border-radius:10px;
+              border:none;
+              font-size:16px;
+              background:white;
+              color:#0f172a;
+              outline:none;
+              box-sizing:border-box;
+              font-family:inherit;
+              line-height:1.6;
+              resize:vertical;
+            "
+          ></textarea>
+
+          <p
+            id="editorMessage"
+            style="
+              margin-top:10px;
+              color:#f87171;
+              font-size:14px;
+            "
+          ></p>
 
           <div style="
             display:flex;
             gap:10px;
-            margin-top:20px;
+            margin-top:15px;
           ">
 
             <button
-              id="cancelCategoryBtn"
+              id="editorCancelBtn"
               style="
                 flex:1;
-                padding:12px;
+                padding:13px;
                 border:none;
                 border-radius:9px;
                 background:#64748b;
@@ -687,12 +735,11 @@ const module =
               বাতিল
             </button>
 
-
             <button
-              id="confirmCategoryBtn"
+              id="editorSubmitBtn"
               style="
-                flex:1;
-                padding:12px;
+                flex:2;
+                padding:13px;
                 border:none;
                 border-radius:9px;
                 background:#10b981;
@@ -702,7 +749,7 @@ const module =
                 font-weight:bold;
               "
             >
-              নির্বাচন করুন
+              ${isEdit ? "💾 সেভ করুন" : "📨 পোস্ট জমা দিন"}
             </button>
 
           </div>
@@ -714,39 +761,73 @@ const module =
       document.body.appendChild(overlay);
 
 
-      /* CONFIRM */
+      /* এডিট মোডে পুরনো মান বসানো */
 
-      document
-        .getElementById("confirmCategoryBtn")
+      if (isEdit) {
+
+        overlay.querySelector("#editorTitle").value =
+          existing.title || "";
+
+        overlay.querySelector("#editorCategory").value =
+          existing.category || "";
+
+        overlay.querySelector("#editorContent").value =
+          existing.content || "";
+
+      }
+
+
+      const message =
+        overlay.querySelector("#editorMessage");
+
+
+      /* সাবমিট */
+
+      overlay
+        .querySelector("#editorSubmitBtn")
         .addEventListener("click", () => {
 
-          const selected =
-            document.getElementById(
-              "postCategorySelect"
-            ).value;
+          const title =
+            overlay.querySelector("#editorTitle").value.trim();
+
+          const content =
+            overlay.querySelector("#editorContent").value.trim();
+
+          const category =
+            overlay.querySelector("#editorCategory").value;
 
 
-          if (!selected) {
+          if (!title) {
+            message.innerText = "⚠️ শিরোনাম লিখুন।";
+            return;
+          }
 
-            alert(
-              "⚠️ দয়া করে একটি ক্যাটাগরি নির্বাচন করুন।"
-            );
+          if (!category) {
+            message.innerText = "⚠️ একটি ক্যাটাগরি নির্বাচন করুন।";
+            return;
+          }
 
+          if (!content) {
+            message.innerText = "⚠️ পোস্টের লেখা লিখুন।";
             return;
           }
 
 
           overlay.remove();
 
-          resolve(selected);
+          resolve({
+            title,
+            content,
+            category
+          });
 
         });
 
 
-      /* CANCEL */
+      /* বাতিল */
 
-      document
-        .getElementById("cancelCategoryBtn")
+      overlay
+        .querySelector("#editorCancelBtn")
         .addEventListener("click", () => {
 
           overlay.remove();
@@ -754,6 +835,7 @@ const module =
           resolve(null);
 
         });
+
 
     });
 
@@ -1410,6 +1492,22 @@ const module =
 
 
               <button
+                class="editBtn"
+                style="
+                  background:#3b82f6;
+                  color:white;
+                  border:none;
+                  padding:10px 16px;
+                  border-radius:8px;
+                  cursor:pointer;
+                  font-weight:bold;
+                "
+              >
+                ✏️ Edit
+              </button>
+
+
+              <button
                 class="publishBtn"
                 style="
                   background:#10b981;
@@ -1441,6 +1539,61 @@ const module =
 
             </div>
           `;
+
+
+          /* =========================
+             EDIT (Pending)
+          ========================= */
+
+          card
+            .querySelector(
+              ".editBtn"
+            )
+            .addEventListener(
+              "click",
+              async () => {
+
+                const result =
+                  await openPostEditor({
+                    title: post.title || "",
+                    content: post.content || "",
+                    category: post.category || ""
+                  });
+
+                if (!result) {
+                  return;
+                }
+
+                try {
+                  await updateDoc(
+                    doc(
+                      db,
+                      "Posts",
+                      postDoc.id
+                    ),
+                    {
+                      title: result.title,
+                      content: result.content,
+                      category: result.category
+                    }
+                  );
+
+                  alert(
+                    "✏️ পোস্ট আপডেট হয়েছে!"
+                  );
+
+                  loadPendingPosts();
+
+                } catch (error) {
+                  console.error(error);
+                  alert(
+                    "❌ সেভ করা যায়নি:\n\n" +
+                    error.message
+                  );
+                }
+
+              }
+            );
 
 
           /* =========================
@@ -1764,6 +1917,22 @@ const module =
             ">
 
               <button
+                class="editBtn"
+                style="
+                  background:#3b82f6;
+                  color:white;
+                  border:none;
+                  padding:10px 16px;
+                  border-radius:8px;
+                  cursor:pointer;
+                  font-weight:bold;
+                "
+              >
+                ✏️ Edit
+              </button>
+
+
+              <button
                 class="unpublishBtn"
                 style="
                   background:#f59e0b;
@@ -1795,6 +1964,61 @@ const module =
 
             </div>
           `;
+
+          /* =========================
+             EDIT (Published)
+          ========================= */
+
+          card
+            .querySelector(
+              ".editBtn"
+            )
+            .addEventListener(
+              "click",
+              async () => {
+
+                const result =
+                  await openPostEditor({
+                    title: post.title || "",
+                    content: post.content || "",
+                    category: post.category || ""
+                  });
+
+                if (!result) {
+                  return;
+                }
+
+                try {
+                  await updateDoc(
+                    doc(
+                      db,
+                      "Posts",
+                      postDoc.id
+                    ),
+                    {
+                      title: result.title,
+                      content: result.content,
+                      category: result.category
+                    }
+                  );
+
+                  alert(
+                    "✏️ পোস্ট আপডেট হয়েছে!"
+                  );
+
+                  loadPublishedPostsAdmin();
+
+                } catch (error) {
+                  console.error(error);
+                  alert(
+                    "❌ সেভ করা যায়নি:\n\n" +
+                    error.message
+                  );
+                }
+
+              }
+            );
+
 
           /* =========================
              UNPUBLISH
