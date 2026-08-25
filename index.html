@@ -480,6 +480,7 @@ const module =
     query,
     where,
     updateDoc,
+    deleteDoc,
     doc
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -1761,6 +1762,9 @@ const module =
 
   /* =========================
      LOAD PUBLISHED POSTS (Admin)
+     ছোট সারি-আকারে তালিকা —
+     ক্লিক করলে লেখা খুলে যায়,
+     Delete মানে চিরতরে মুছে যাওয়া
   ========================= */
 
   async function loadPublishedPostsAdmin() {
@@ -1809,7 +1813,15 @@ const module =
 
       }
 
-      container.innerHTML = "";
+      container.innerHTML = `
+        <p style="
+          color:#94a3b8;
+          font-size:13px;
+          margin:0 0 12px 0;
+        ">
+          💡 লেখাটি দেখতে যেকোনো সারিতে ক্লিক করুন
+        </p>
+      `;
 
 
       /* নতুন পোস্ট আগে দেখানো */
@@ -1854,122 +1866,166 @@ const module =
             ).toLocaleDateString("bn-BD");
           }
 
-          const card =
+          const row =
             document.createElement(
               "div"
             );
 
-          card.style.cssText = `
-            background:#ffffff;
-            color:#0f172a;
-            padding:20px;
-            border-radius:15px;
-            margin-bottom:20px;
-            border:2px solid #10b981;
+          row.style.cssText = `
+            background:#1e293b;
+            border:1px solid #334155;
+            border-radius:10px;
+            padding:12px 14px;
+            margin-bottom:10px;
           `;
 
-          card.innerHTML = `
+          row.innerHTML = `
 
-            <h3 style="
-              margin-bottom:10px;
-            ">
-              ${escapeHtml(
-                post.title ||
-                "Untitled"
-              )}
-            </h3>
+            <div
+              class="rowHeader"
+              style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                gap:10px;
+                flex-wrap:wrap;
+                cursor:pointer;
+              "
+            >
 
-            <p style="
-              margin-bottom:6px;
-              color:#64748b;
-            ">
-              Category:
-              <strong>
-                ${getCategoryName(
-                  post.category
-                )}
-              </strong>
-            </p>
+              <div style="
+                flex:1;
+                min-width:180px;
+              ">
 
-            <p style="
-              margin-bottom:12px;
-              color:#94a3b8;
-              font-size:0.9em;
-            ">
-              📅 ${date}
-            </p>
+                <div style="
+                  color:white;
+                  font-weight:bold;
+                  font-size:15px;
+                ">
+                  ${escapeHtml(
+                    post.title ||
+                    "Untitled"
+                  )}
+                </div>
 
-            <p style="
-              color:#475569;
-              line-height:1.6;
-              white-space:pre-line;
-              margin-bottom:15px;
-            ">
+                <div style="
+                  color:#94a3b8;
+                  font-size:12.5px;
+                  margin-top:3px;
+                ">
+                  ${getCategoryName(
+                    post.category
+                  )} • 📅 ${date}
+                </div>
+
+              </div>
+
+
+              <div style="
+                display:flex;
+                gap:8px;
+              ">
+
+                <button
+                  class="editBtn"
+                  style="
+                    background:#3b82f6;
+                    color:white;
+                    border:none;
+                    padding:7px 12px;
+                    border-radius:7px;
+                    cursor:pointer;
+                    font-size:13px;
+                    font-weight:bold;
+                  "
+                >
+                  ✏️ Edit
+                </button>
+
+
+                <button
+                  class="publishedDeleteBtn"
+                  style="
+                    background:#ef4444;
+                    color:white;
+                    border:none;
+                    padding:7px 12px;
+                    border-radius:7px;
+                    cursor:pointer;
+                    font-size:13px;
+                    font-weight:bold;
+                  "
+                >
+                  🗑 Delete
+                </button>
+
+              </div>
+
+            </div>
+
+
+            <div
+              class="contentPreview"
+              style="
+                display:none;
+                margin-top:12px;
+                padding:12px;
+                background:#0f172a;
+                border-radius:8px;
+                color:#cbd5e1;
+                font-size:14px;
+                line-height:1.6;
+                white-space:pre-line;
+                max-height:250px;
+                overflow-y:auto;
+              "
+            >
               ${escapeHtml(
                 post.content || ""
               )}
-            </p>
-
-            <div style="
-              display:flex;
-              gap:10px;
-              flex-wrap:wrap;
-            ">
-
-              <button
-                class="editBtn"
-                style="
-                  background:#3b82f6;
-                  color:white;
-                  border:none;
-                  padding:10px 16px;
-                  border-radius:8px;
-                  cursor:pointer;
-                  font-weight:bold;
-                "
-              >
-                ✏️ Edit
-              </button>
-
-
-              <button
-                class="unpublishBtn"
-                style="
-                  background:#f59e0b;
-                  color:white;
-                  border:none;
-                  padding:10px 16px;
-                  border-radius:8px;
-                  cursor:pointer;
-                  font-weight:bold;
-                "
-              >
-                ↩️ Unpublish
-              </button>
-
-              <button
-                class="publishedDeleteBtn"
-                style="
-                  background:#ef4444;
-                  color:white;
-                  border:none;
-                  padding:10px 16px;
-                  border-radius:8px;
-                  cursor:pointer;
-                  font-weight:bold;
-                "
-              >
-                🗑 Delete
-              </button>
-
             </div>
           `;
+
+
+          /* =========================
+             সারিতে ক্লিক = লেখা খোলা/বন্ধ
+          ========================= */
+
+          const header =
+            row.querySelector(
+              ".rowHeader"
+            );
+
+          const preview =
+            row.querySelector(
+              ".contentPreview"
+            );
+
+          header.addEventListener(
+            "click",
+            (e) => {
+
+              if (
+                e.target.closest("button")
+              ) {
+                return;
+              }
+
+              preview.style.display =
+                preview.style.display === "none"
+                  ? "block"
+                  : "none";
+
+            }
+          );
+
 
           /* =========================
              EDIT (Published)
           ========================= */
 
-          card
+          row
             .querySelector(
               ".editBtn"
             )
@@ -2021,60 +2077,12 @@ const module =
 
 
           /* =========================
-             UNPUBLISH
-          ========================= */
-
-          card
-            .querySelector(
-              ".unpublishBtn"
-            )
-            .addEventListener(
-              "click",
-              async () => {
-
-                if (
-                  !confirm(
-                    "এই Published পোস্টটি কি Pending অবস্থায় ফিরিয়ে নিতে চান?"
-                  )
-                ) {
-                  return;
-                }
-
-                try {
-                  await updateDoc(
-                    doc(
-                      db,
-                      "Posts",
-                      postDoc.id
-                    ),
-                    {
-                      status:
-                        "pending"
-                    }
-                  );
-
-                  alert(
-                    "↩️ পোস্টটি Pending অবস্থায় ফিরে গেছে।"
-                  );
-
-                  loadPublishedPostsAdmin();
-
-                } catch (error) {
-                  console.error(error);
-                  alert(
-                    "❌ Unpublish করা যায়নি:\n\n" +
-                    error.message
-                  );
-                }
-
-              }
-            );
-
-          /* =========================
              DELETE (Published)
+             চিরতরে মুছে যায় —
+             Pending-এ ফিরে আসে না
           ========================= */
 
-          card
+          row
             .querySelector(
               ".publishedDeleteBtn"
             )
@@ -2084,27 +2092,24 @@ const module =
 
                 if (
                   !confirm(
-                    "এই Published পোস্টটি কি সত্যিই Delete করতে চান?\n\nসাইট থেকে সরে যাবে।"
+                    "⚠️ এই পোস্টটি কি সত্যিই চিরতরে মুছে ফেলবেন?\n\n" +
+                    "মুছে ফেললে আর ফিরিয়ে আনা যাবে না।"
                   )
                 ) {
                   return;
                 }
 
                 try {
-                  await updateDoc(
+                  await deleteDoc(
                     doc(
                       db,
                       "Posts",
                       postDoc.id
-                    ),
-                    {
-                      status:
-                        "deleted"
-                    }
+                    )
                   );
 
                   alert(
-                    "🗑 পোস্টটি মুছে ফেলা হয়েছে।"
+                    "🗑 পোস্টটি চিরতরে মুছে ফেলা হয়েছে।"
                   );
 
                   loadPublishedPostsAdmin();
@@ -2121,7 +2126,7 @@ const module =
             );
 
           container.appendChild(
-            card
+            row
           );
 
         }
