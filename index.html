@@ -299,21 +299,20 @@
     let isMenuOpen = false;  
 
     pinwheel.addEventListener('click', function(e) {  
-        if (e.target.classList.contains('circle-menu-item')) return;  
+    if (e.target.closest('.circle-menu-item')) return;  
 
-        isMenuOpen = !isMenuOpen;  
-        if (isMenuOpen) {  
-            portalContainer.classList.add('open');  
-            pinwheel.classList.add('paused');  
-            hintText.innerText = '✨ কী পড়বেন? সিদ্ধান্ত আপনার!';  
-        } else {  
-            portalContainer.classList.remove('open');  
-            pinwheel.classList.remove('paused');  
-            hintText.innerText = '|| প্রতিটি পাপড়ি, একেকটি ভাবনার দুয়ার ||';  
-        }  
-    });  
-
-    const menuItems = document.querySelectorAll('.circle-menu-item');  
+    isMenuOpen = !isMenuOpen;  
+    if (isMenuOpen) {  
+        portalContainer.classList.add('open');  
+        pinwheel.classList.add('paused');  
+        hintText.innerText = '✨ কী পড়বেন? সিদ্ধান্ত আপনার!';  
+    } else {  
+        portalContainer.classList.remove('open');  
+        pinwheel.classList.remove('paused');  
+        hintText.innerText = '|| প্রতিটি পাপড়ি, একেকটি ভাবনার দুয়ার ||';  
+    }  
+});
+     const menuItems = document.querySelectorAll('.circle-menu-item');  
     menuItems.forEach(function(item) {  
         item.addEventListener('click', async function(e) {
             e.stopPropagation();  
