@@ -254,7 +254,8 @@
 
 /* =========================
    ফ্লোটিং বাটন ডক
-   (সব বাটন এক জায়গায় গুছানো)
+   (ট্যাপ করলে খোলে,
+    আবার ট্যাপে গুটিয়ে যায়)
 ========================= */
 
 .floating-dock {
@@ -264,7 +265,6 @@
     z-index: 3000;
     display: flex;
     flex-direction: column;
-    gap: 4px;
     padding: 7px;
     background: rgba(15, 23, 42, 0.88);
     backdrop-filter: blur(10px);
@@ -272,7 +272,75 @@
     border: 1px solid rgba(148, 163, 184, 0.22);
     border-radius: 16px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
 }
+
+/* ---- টগল বাটন (সবসময় দেখা যায়) ---- */
+
+.dock-toggle {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    color: #e2e8f0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background .18s ease, color .18s ease;
+}
+
+.dock-toggle:hover {
+    background: rgba(56, 189, 248, 0.16);
+    color: #38bdf8;
+}
+
+.dock-toggle svg {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    transition: opacity .2s ease, transform .25s ease;
+}
+
+.dock-toggle .i-close {
+    opacity: 0;
+    transform: rotate(-90deg) scale(.6);
+}
+
+.floating-dock.open .dock-toggle .i-open {
+    opacity: 0;
+    transform: rotate(90deg) scale(.6);
+}
+
+.floating-dock.open .dock-toggle .i-close {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+}
+
+/* ---- মেনু (ট্যাপে খোলে / গুটিয়ে যায়) ---- */
+
+.dock-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+    transition: max-height .35s cubic-bezier(.4, 0, .2, 1),
+                opacity .28s ease,
+                margin-top .35s ease;
+}
+
+.floating-dock.open .dock-menu {
+    max-height: 200px;
+    opacity: 1;
+    margin-top: 4px;
+}
+
+/* ---- মেনুর বাটনগুলো ---- */
 
 .dock-btn {
     position: relative;
@@ -286,12 +354,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     transition: background .18s ease, color .18s ease, transform .18s ease;
 }
 
-.dock-btn svg {
-    display: block;
-}
+.dock-btn svg { display: block; }
 
 .dock-btn:hover {
     transform: scale(1.08);
@@ -299,33 +366,16 @@
     background: rgba(148, 163, 184, 0.15);
 }
 
-.dock-btn[data-accent="add"]:hover {
-    background: rgba(16, 185, 129, 0.16);
-    color: #34d399;
-}
+.dock-btn[data-accent="add"]:hover    { background: rgba(16, 185, 129, 0.16); color: #34d399; }
+.dock-btn[data-accent="search"]:hover { background: rgba(56, 189, 248, 0.16); color: #38bdf8; }
+.dock-btn[data-accent="about"]:hover  { background: rgba(245, 158, 11, 0.16); color: #fbbf24; }
+.dock-btn[data-accent="admin"]:hover  { background: rgba(224, 82, 45, 0.16); color: #fb923c; }
 
-.dock-btn[data-accent="search"]:hover {
-    background: rgba(56, 189, 248, 0.16);
-    color: #38bdf8;
-}
+/* ---- JS টুলটিপ (বাটনের বাম দিকে ভাসে) ---- */
 
-.dock-btn[data-accent="about"]:hover {
-    background: rgba(245, 158, 11, 0.16);
-    color: #fbbf24;
-}
-
-.dock-btn[data-accent="admin"]:hover {
-    background: rgba(224, 82, 45, 0.16);
-    color: #fb923c;
-}
-
-/* হোভারে টুলটিপ (বাটনের বাম দিকে) */
-.dock-btn::after {
-    content: attr(data-tip);
-    position: absolute;
-    right: calc(100% + 12px);
-    top: 50%;
-    transform: translateY(-50%) translateX(6px);
+.dock-tip {
+    position: fixed;
+    z-index: 3001;
     background: #0f172a;
     color: #e2e8f0;
     border: 1px solid #334155;
@@ -333,19 +383,9 @@
     border-radius: 8px;
     font-size: 13px;
     font-weight: 600;
-    font-family: inherit;
     white-space: nowrap;
-    opacity: 0;
     pointer-events: none;
-    transition: opacity .18s ease, transform .18s ease;
-}
-
-.dock-btn:hover::after {
-    opacity: 1;
-    transform: translateY(-50%) translateX(0);
-}
-
-/* ছোট স্ক্রিনে টুলটিপ দরকার নেই */
-@media (max-width: 600px) {
-    .dock-btn::after { display: none; }
+    display: none;
+    transform: translateY(-50%);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }

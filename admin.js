@@ -394,7 +394,7 @@
   `;
 
   document
-    .getElementById("floatingDock")
+    .getElementById("dockMenu")
     .appendChild(adminButton);
 
 

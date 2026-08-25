@@ -311,14 +311,75 @@
 
     /* =========================
        ফ্লোটিং বাটন ডক
-       (＋ সার্চ, অ্যাবাউট, অ্যাডমিন —
-        সব বাটন এক জায়গায় গুছানো)
+       (ট্যাপ করলে খোলে,
+        আবার ট্যাপে গুটিয়ে যায়)
     ========================= */
 
     const floatingDock = document.createElement('div');
     floatingDock.className = "floating-dock";
     floatingDock.id = "floatingDock";
     document.body.appendChild(floatingDock);
+
+    /* টগল বাটন — এটাই সবসময় দেখা যায় */
+    const dockToggle = document.createElement('button');
+    dockToggle.className = "dock-toggle";
+    dockToggle.id = "dockToggle";
+    dockToggle.title = "মেনু খুলুন / বন্ধ করুন";
+    dockToggle.setAttribute("aria-label", "মেনু");
+    dockToggle.innerHTML = `
+        <svg class="i-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <path d="M4 7h16M4 12h16M4 17h16"/>
+        </svg>
+        <svg class="i-close" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <path d="M6 6l12 12M18 6L6 18"/>
+        </svg>
+    `;
+    floatingDock.appendChild(dockToggle);
+
+    /* মেনু — বাটনগুলো এখানে থাকবে */
+    const dockMenu = document.createElement('div');
+    dockMenu.className = "dock-menu";
+    dockMenu.id = "dockMenu";
+    floatingDock.appendChild(dockMenu);
+
+    /* ট্যাপে খোলে / বন্ধ হয় */
+    dockToggle.addEventListener('click', function() {
+        floatingDock.classList.toggle('open');
+        dockTip.style.display = "none";
+    });
+
+    /* মেনুর কোনো বাটনে ক্লিক করলে ডক নিজে নিজে গুটিয়ে যাবে */
+    dockMenu.addEventListener('click', function() {
+        setTimeout(function() {
+            floatingDock.classList.remove('open');
+            dockTip.style.display = "none";
+        }, 180);
+    });
+
+    /* টুলটিপ (ডেস্কটপে হোভার করলে বাটনের বাম দিকে ভাসে) */
+    const dockTip = document.createElement('div');
+    dockTip.className = "dock-tip";
+    document.body.appendChild(dockTip);
+
+    const canHover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
+
+    floatingDock.addEventListener('mouseover', function(e) {
+        if (!canHover) return;
+        const btn = e.target.closest('.dock-btn');
+        if (!btn) return;
+        dockTip.textContent = btn.getAttribute('data-tip') || "";
+        if (!dockTip.textContent) return;
+        dockTip.style.display = "block";
+        const r = btn.getBoundingClientRect();
+        const tipW = dockTip.offsetWidth;
+        dockTip.style.top = (r.top + r.height / 2) + "px";
+        dockTip.style.left = (r.left - tipW - 10) + "px";
+    });
+
+    floatingDock.addEventListener('mouseout', function(e) {
+        const btn = e.target.closest('.dock-btn');
+        if (btn) dockTip.style.display = "none";
+    });
 
     /* ＋ নতুন পোস্ট বাটন */
     const addPostBtn = document.createElement('button');
@@ -332,7 +393,7 @@
             <path d="M12 5v14M5 12h14"/>
         </svg>
     `;
-    floatingDock.appendChild(addPostBtn);
+    dockMenu.appendChild(addPostBtn);
 
     /* =========================
        সার্চ 🔍
@@ -349,7 +410,7 @@
             <path d="M21 21l-4.35-4.35"/>
         </svg>
     `;
-    floatingDock.appendChild(searchButton);
+    dockMenu.appendChild(searchButton);
 
     let searchOverlay = null;
 
@@ -515,7 +576,7 @@
             <path d="M12 7.5v.01"/>
         </svg>
     `;
-    floatingDock.appendChild(aboutButton);
+    dockMenu.appendChild(aboutButton);
 
     aboutButton.addEventListener('click', function() {
         const overlay = document.createElement('div');
