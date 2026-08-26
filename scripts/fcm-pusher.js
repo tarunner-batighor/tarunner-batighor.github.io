@@ -3,11 +3,11 @@
  *  তারুণ্যের বাতিঘর — FCM Push Sender (GitHub Actions)
  * ============================================================
  *  প্রতি ৫ মিনিটে চলে (cron)। কাজ:
- *  1. যে notification গুলো এখনো push হয়নি খুঁজে নেয়
- *     (users/{uid}/notifications — pushedAt == null)
+ *  1. pushQueue collection থেকে pending item নেয়
+ *     (admin accept/reject করলেই এই queue-তে item আসে)
  *  2. সেই user-এর সব device token-এ FCM Web Push পাঠায়
- *  3. push শেষে pushedAt চিহ্নিত করে (আবার duplicate হয় না)
- *  4. invalid token গুলো মুছে দেয়
+ *  3. notification-এ pushedAt চিহ্নিত করে
+ *  4. queue item মুছে দেয়, invalid token মুছে দেয়
  *
  *  নোট: এখানে কোনো sensitive key থাকে না —
  *  Firebase service account শুধু GitHub-এর encrypted secret-এ।
@@ -24,28 +24,56 @@ const INVALID_TOKEN_ERRORS = new Set([
   "messaging/registration-token-holds-too-many-apps"
 ]);
 
+/* FCM connectivity smoke test (dummy token — expected error tells us
+   service account + VAPID setup ঠিক আছে কিনা) */
+async function smokeTest(messaging) {
+  try {
+    await messaging.send({
+      token: "smoke-test-invalid-token",
+      notification: { title: "test", body: "test" },
+      data: { url: SITE_URL }
+    });
+    console.log("SMOKE: send ok (unexpected for dummy token)");
+  } catch (e) {
+    const code = String((e.error && e.error.code) || e.message || "");
+    console.log("SMOKE FCM responded:", code.slice(0, 200));
+    if (
+      code.includes("invalid-registration-token") ||
+      code.includes("400")
+    ) {
+      console.log(
+        "SMOKE OK — FCM auth + VAPID setup valid (dummy token correctly rejected)"
+      );
+      return;
+    }
+    throw new Error("SMOKE FAIL — unexpected FCM error: " + code.slice(0, 300));
+  }
+}
+
 async function main() {
   admin.initializeApp();
 
   const db = admin.firestore();
   const messaging = admin.messaging();
 
-  const snap = await db
-    .collectionGroup("notifications")
-    .where("pushedAt", "==", null)
-    .get();
+  if (process.env.SMOKE_TEST === "1") {
+    await smokeTest(messaging);
+    return;
+  }
 
-  const total = snap.size;
+  const queue = await db.collection("pushQueue").get();
+
+  const total = queue.size;
   let pushed = 0;
   let noTokens = 0;
   let failed = 0;
 
-  console.log(`Unpushed notifications found: ${total}`);
+  console.log(`pushQueue items: ${total}`);
 
-  for (const nDoc of snap.docs) {
-    const n = nDoc.data();
-    const parts = nDoc.ref.path.split("/");
-    const uid = parts[1];
+  for (const qDoc of queue.docs) {
+    const q = qDoc.data();
+    const uid = q.uid;
+    const notifId = q.notifId;
 
     try {
       /* ---- user-এর সব device token ---- */
@@ -58,10 +86,10 @@ async function main() {
 
       if (tokens.length > 0) {
         const pushTitle =
-          n.type === "approved"
+          q.type === "approved"
             ? "✅ পোস্ট অনুমোদিত হয়েছে"
             : "❌ পোস্ট অনুমোদিত হয়নি";
-        const body = n.message || "";
+        const body = q.message || "";
 
         const results = await messaging.sendEachForMulticast({
           tokens: tokens,
@@ -69,9 +97,9 @@ async function main() {
           data: {
             title: pushTitle,
             body: body,
-            type: n.type || "",
-            postId: n.postId || "",
-            url: SITE_URL + "/#post/" + (n.postId || "")
+            type: q.type || "",
+            postId: q.postId || "",
+            url: SITE_URL + "/#post/" + (q.postId || "")
           }
         });
 
@@ -95,9 +123,9 @@ async function main() {
         noTokens++;
       }
 
-      /* ---- pushed mark ---- */
+      /* ---- notification-এ pushedAt mark ---- */
       await db
-        .doc("users/" + uid + "/notifications/" + nDoc.id)
+        .doc("users/" + uid + "/notifications/" + notifId)
         .set(
           {
             pushedAt: new Date().toISOString(),
@@ -106,6 +134,9 @@ async function main() {
           { merge: true }
         );
 
+      /* ---- queue item মুছে ফেলা ---- */
+      await qDoc.ref.delete();
+
       if (ok > 0) {
         pushed++;
       } else {
@@ -113,17 +144,18 @@ async function main() {
       }
 
       console.log(
-        `notif ${nDoc.id} (${n.type}): sent=${ok}/${tokens.length}`
+        `queue ${qDoc.id} (${q.type}, user ${uid.slice(0, 8)}…): sent=${ok}/${tokens.length}`
       );
 
     } catch (err) {
       failed++;
-      console.error(`notif ${nDoc.id} failed: ${err.message}`);
+      /* queue item থাকবে — পরের run-এ আবার চেষ্টা হবে */
+      console.error(`queue ${qDoc.id} failed (will retry): ${err.message}`);
     }
   }
 
   console.log(
-    `DONE total=${total} pushed=${pushed} noTokens=${noTokens} failed=${failed}`
+    `DONE items=${total} pushed=${pushed} noTokens=${noTokens} failed=${failed}`
   );
 }
 

@@ -9,9 +9,10 @@
  *     firebase deploy --only functions
  *  করলেই push INSTANT হবে (5 মিনিটের delay সবার আগে চলে যাবে)।
  *
- *  নোট: in-site notification লেখে ADMIN PANEL (client-side) —
- *  তাই এই function শুধু push পাঠায় + pushedAt mark করে,
- *  notification দ্বিতীয়বার লেখে না (duplicate এড়ানোর জন্য)।
+ *  নোট: notification + queue item লেখে ADMIN PANEL (client)।
+ *  এই function শুধু queue থেকে item নিয়ে push পাঠায়।
+ *  cron + function দুটো একসাথে থাকলেও double-push হবে না —
+ *  যে item আগে push করবে সেটা queue থেকে মুছে ফেলবে।
  * ============================================================
  */
 
@@ -54,78 +55,86 @@ exports.onPostStatusChange = functions.firestore
         }
         if (!type) return null;
 
-        const uid = after.authorUid;
         const db = admin.firestore();
-        const userCol = db.collection("users").doc(uid);
 
-        /* ---- client-এর লেখা notification খুঁজে নাও (একবার retry) ---- */
-        let matching = [];
+        /* ---- queue item খুঁজে নাও (client delay হলে একবার retry) ---- */
+        let items = [];
         for (let attempt = 0; attempt < 2; attempt++) {
-            const snap = await userCol
-                .collection("notifications")
-                .where("pushedAt", "==", null)
+            const snap = await db
+                .collection("pushQueue")
+                .where("postId", "==", postId)
                 .get();
-            matching = snap.docs.filter(function (d) {
-                return d.data().postId === postId;
+            items = snap.docs.filter(function (d) {
+                return d.data().type === type;
             });
-            if (matching.length > 0) break;
+            if (items.length > 0) break;
             await sleep(3000);
         }
 
-        if (matching.length === 0) {
-            /* notification এখনো লেখা হয়নি — GitHub Actions-এর cron
+        if (items.length === 0) {
+            /* queue item এখনো আসেনি — GitHub Actions-এর cron
                নিজেই 5 মিনিটের মধ্যে push করে দেবে */
             return { type: type, deferred: true };
         }
 
-        const n = matching[0].data();
-        const message = n.message || "";
-        const pushTitle = type === "approved"
-            ? "✅ পোস্ট অনুমোদিত হয়েছে"
-            : "❌ পোস্ট অনুমোদিত হয়নি";
-        const targetUrl = SITE_URL + "/#post/" + postId;
+        let sent = 0;
+        for (const qDoc of items) {
+            const q = qDoc.data();
+            const uid = q.uid;
+            try {
+                const tSnap = await db
+                    .collection("users", uid, "pushTokens")
+                    .get();
+                const tokens = tSnap.docs.map(function (d) { return d.id; });
 
-        /* ---- FCM Web Push ---- */
-        const tSnap = await userCol.collection("pushTokens").get();
-        const tokens = tSnap.docs.map(function (d) { return d.id; });
+                let ok = 0;
+                if (tokens.length > 0) {
+                    const pushTitle = type === "approved"
+                        ? "✅ পোস্ট অনুমোদিত হয়েছে"
+                        : "❌ পোস্ট অনুমোদিত হয়নি";
+                    const results = await admin.messaging().sendEachForMulticast({
+                        tokens: tokens,
+                        notification: { title: pushTitle, body: q.message || "" },
+                        data: {
+                            title: pushTitle,
+                            body: q.message || "",
+                            type: type,
+                            postId: postId,
+                            url: SITE_URL + "/#post/" + postId
+                        }
+                    });
+                    ok = results.successCount;
 
-        let ok = 0;
-        if (tokens.length > 0) {
-            const results = await admin.messaging().sendEachForMulticast({
-                tokens: tokens,
-                notification: { title: pushTitle, body: message },
-                data: {
-                    title: pushTitle,
-                    body: message,
-                    type: type,
-                    postId: postId,
-                    url: targetUrl
-                }
-            });
-            ok = results.successCount;
-
-            const batch = db.batch();
-            for (const r of results.responses) {
-                if (!r.success && r.error && INVALID_TOKEN_ERRORS.has(r.error.code)) {
-                    const idx = r.index !== undefined ? r.index : r.indexToOriginalMessage;
-                    if (idx !== undefined && idx < tokens.length) {
-                        batch.delete(userCol.collection("pushTokens").doc(tokens[idx]));
+                    const batch = db.batch();
+                    for (const r of results.responses) {
+                        if (!r.success && r.error && INVALID_TOKEN_ERRORS.has(r.error.code)) {
+                            const idx = r.index !== undefined ? r.index : r.indexToOriginalMessage;
+                            if (idx !== undefined && idx < tokens.length) {
+                                batch.delete(
+                                    db.collection("users", uid, "pushTokens").doc(tokens[idx])
+                                );
+                            }
+                        }
                     }
+                    await batch.commit();
                 }
+
+                await db
+                    .doc("users/" + uid + "/notifications/" + q.notifId)
+                    .set(
+                        {
+                            pushedAt: new Date().toISOString(),
+                            pushSuccessCount: ok
+                        },
+                        { merge: true }
+                    );
+
+                await qDoc.ref.delete();
+                sent += ok;
+            } catch (e) {
+                console.error("push failed for", qDoc.id, e.message);
             }
-            await batch.commit();
         }
 
-        /* ---- pushedAt mark (cron আবার push করবে না) ---- */
-        for (const doc of matching) {
-            await doc.ref.set(
-                {
-                    pushedAt: new Date().toISOString(),
-                    pushSuccessCount: ok
-                },
-                { merge: true }
-            );
-        }
-
-        return { type: type, pushSent: ok > 0, sent: ok, tokens: tokens.length };
+        return { type: type, pushSent: sent > 0, sent: sent };
     });

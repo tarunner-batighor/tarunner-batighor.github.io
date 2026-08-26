@@ -3,7 +3,13 @@ name: Push Notifier
 on:
   schedule:
     - cron: "*/5 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      smoke_test:
+        description: "1 = FCM connectivity test (dummy token)"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -27,6 +33,8 @@ jobs:
       - name: FCM push
         id: pusher
         working-directory: scripts
+        env:
+          SMOKE_TEST: ${{ github.event.inputs.smoke_test }}
         run: |
           if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" ]; then
             echo "FIREBASE_SERVICE_ACCOUNT secret set kora hoynai — skip."

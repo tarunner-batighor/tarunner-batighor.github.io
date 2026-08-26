@@ -1339,7 +1339,7 @@
 
                     try {
 
-                      await addDoc(
+                      const notifRef = await addDoc(
                         collection(
                           db,
                           "users",
@@ -1356,6 +1356,25 @@
                           createdAt: serverTimestamp()
                         }
                       );
+
+                      /* push queue — cron/function এখান থেকে push পাঠায় */
+
+                      await addDoc(
+                        collection(
+                          db,
+                          "pushQueue"
+                        ),
+                        {
+                          uid: post.authorUid,
+                          notifId: notifRef.id,
+                          type: "approved",
+                          postId: postDoc.id,
+                          postTitle: post.title || "",
+                          message: "আপনার পোস্টটি অনুমোদিত হয়েছে এবং এখন ওয়েবসাইটে প্রকাশিত হয়েছে।",
+                          createdAt: serverTimestamp()
+                        }
+                      );
+
 
                     } catch (e) {
 
@@ -1439,7 +1458,7 @@
 
                     try {
 
-                      await addDoc(
+                      const notifRef = await addDoc(
                         collection(
                           db,
                           "users",
@@ -1456,6 +1475,25 @@
                           createdAt: serverTimestamp()
                         }
                       );
+
+                      /* push queue — cron/function এখান থেকে push পাঠায় */
+
+                      await addDoc(
+                        collection(
+                          db,
+                          "pushQueue"
+                        ),
+                        {
+                          uid: post.authorUid,
+                          notifId: notifRef.id,
+                          type: "rejected",
+                          postId: postDoc.id,
+                          postTitle: post.title || "",
+                          message: "দুঃখিত, আপনার পোস্টটি অনুমোদিত হয়নি।",
+                          createdAt: serverTimestamp()
+                        }
+                      );
+
 
                     } catch (e) {
 

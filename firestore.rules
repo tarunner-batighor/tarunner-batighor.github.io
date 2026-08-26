@@ -86,5 +86,14 @@ service cloud.firestore {
           if isSignedIn() && request.auth.uid == uid;
       }
     }
+
+    /* Push Queue:
+       - Admin accept/reject করলে এই queue-তে item আসে (client)
+       - পড়া/lিখা (push + cleanup) শুধু service account
+         (GitHub Actions / Cloud Function) করবে */
+    match /pushQueue/{docId} {
+      allow create: if isAdmin();
+      allow read, update, delete: if false;
+    }
   }
 }
