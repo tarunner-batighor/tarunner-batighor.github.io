@@ -367,7 +367,8 @@ html[data-theme="light"] body::before {
 
 .beacon-core svg { display: block; }
 
-.fp-close { display: none; }
+/* specificity ঠিক করা: .beacon-core svg (block) এর হাতে close icon ছাকা */
+.beacon-core .fp-close { display: none; }
 
 .portal-container.open .beacon-core .fp-icon { display: none; }
 .portal-container.open .beacon-core .fp-close { display: block; }
@@ -609,7 +610,7 @@ html[data-theme="light"] body::before {
 }
 
 .floating-dock.open .dock-menu {
-    max-height: 200px;
+    max-height: 320px;
     opacity: 1;
     margin-top: 4px;
 }
