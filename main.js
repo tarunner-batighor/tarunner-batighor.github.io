@@ -261,7 +261,7 @@
                     </button>
                 </div>
 
-                <p style="text-align:center; color:#94a3b8; font-size:12.5px; margin-top:14px; word-break:break-all;">
+                <p style="text-align:center; color:var(--text-faint); font-size:12.5px; margin-top:14px; word-break:break-all;">
                     ${escapeHtml(shareUrl)}
                 </p>
             `;
@@ -327,28 +327,33 @@
         item.addEventListener('click', function(e) {
             e.stopPropagation();
             const category = this.getAttribute('data-cat');
-            if (location.hash) {
-                history.replaceState(null, '', location.pathname);
-            }
-            showCategory(category, this.getAttribute('data-name') || this.innerText.trim());
+            location.hash = "cat/" + category; /* shareable link */
         });
     });
 
     /* =========================
        হ্যাশ রাউটিং
-       (#post/আইডি দিয়ে সরাসরি পোস্ট খোলা)
+       (#post/আইডি = পোস্ট, #cat/আইডি = ক্যাটাগরি)
     ========================= */
 
     function handleHash() {
-        const m = location.hash.match(/^#post\/([A-Za-z0-9_-]+)/);
-        if (m) {
-            showPostDetail(m[1]);
-        } else if (currentView === "post") {
-            if (currentCategory) {
-                showCategory(currentCategory.id, currentCategory.name);
-            } else {
-                showHome();
+        const postM = location.hash.match(/^#post\/([A-Za-z0-9_-]+)/);
+        if (postM) {
+            showPostDetail(postM[1]);
+            return;
+        }
+
+        const catM = location.hash.match(/^#cat\/([a-z]+)$/);
+        if (catM && CAT_NAMES[catM[1]]) {
+            if (currentView === "category" && currentCategory && currentCategory.id === catM[1]) {
+                return; /* এই ক্যাটাগরিতেই আছি */
             }
+            showCategory(catM[1], CAT_NAMES[catM[1]]);
+            return;
+        }
+
+        if (currentView !== "home") {
+            showHome();
         }
     }
 
@@ -483,7 +488,7 @@
             <div style="
                 width:100%;
                 max-width:600px;
-                background:#1e293b;
+                background:var(--panel-bg);
                 border-radius:18px;
                 padding:20px;
                 box-shadow:0 10px 40px rgba(0,0,0,.5);
@@ -546,8 +551,8 @@
                 return;
             }
 
-            debounceTimer = setTimeout(async function() {
-                results.innerHTML = '<p style="color:#94a3b8;">খোঁজা হচ্ছে...</p>';
+                debounceTimer = setTimeout(async function() {
+                    results.innerHTML = '<p style="color:var(--text-faint);">খোঁজা হচ্ছে...</p>';
 
                 try {
                     if (!allPosts) {
@@ -562,7 +567,7 @@
                     });
 
                     if (matches.length === 0) {
-                        results.innerHTML = '<p style="color:#94a3b8; text-align:center; padding:15px;">😕 কিছু পাওয়া যায়নি — অন্য শব্দে চেষ্টা করুন</p>';
+                        results.innerHTML = '<p style="color:var(--text-faint); text-align:center; padding:15px;">😕 কিছু পাওয়া যায়নি — অন্য শব্দে চেষ্টা করুন</p>';
                         return;
                     }
 
@@ -570,15 +575,15 @@
                     matches.forEach(function(post) {
                         html += `
                             <div class="searchResultRow" data-post-id="${post.id}" style="
-                                background:#0f172a;
-                                border:1px solid #334155;
+                                background:var(--row-bg);
+                                border:1px solid var(--row-border);
                                 border-radius:10px;
                                 padding:12px 14px;
                                 margin-bottom:8px;
                                 cursor:pointer;
                             ">
-                                <div style="color:white; font-weight:bold;">${escapeHtml(post.title || "")}</div>
-                                <div style="color:#94a3b8; font-size:12.5px; margin-top:3px;">
+                                <div style="color:var(--row-title); font-weight:bold;">${escapeHtml(post.title || "")}</div>
+                                <div style="color:var(--text-faint); font-size:12.5px; margin-top:3px;">
                                     ${escapeHtml(CAT_NAMES[post.category] || post.category || "")} • 📅 ${postDate(post)}
                                 </div>
                             </div>
@@ -643,7 +648,7 @@
                 max-width:520px;
                 max-height:85vh;
                 overflow-y:auto;
-                background:#1e293b;
+                background:var(--panel-bg);
                 border-radius:18px;
                 padding:28px;
                 box-shadow:0 10px 40px rgba(0,0,0,.5);
@@ -651,13 +656,13 @@
             ">
                 <div style="font-size:48px;">🗼</div>
                 <h2 style="color:#38bdf8; margin:10px 0 6px;">তারুণ্যের বাতিঘর</h2>
-                <p style="color:#e2e8f0; font-style:italic; margin-bottom:18px;">“তারুণ্যের কলমে, সত্যের কথা”</p>
+                <p style="color:var(--text-soft); font-style:italic; margin-bottom:18px;">“তারুণ্যের কলমে, সত্যের কথা”</p>
 
-                <p style="color:#cbd5e1; line-height:1.8; text-align:left; font-size:15px;">
+                <p style="color:var(--text-soft); line-height:1.8; text-align:left; font-size:15px;">
                     তারুণ্যের বাতিঘর একটি তরুণ-কেন্দ্রিক বাংলা লেখার প্ল্যাটফর্ম। সত্য ও ন্যায়ের পথে আলো জ্বালিয়ে রাখাই আমাদের ব্রত। নিয়মিত প্রকাশিত হয় —
                 </p>
 
-                <ul style="color:#cbd5e1; text-align:left; line-height:2; padding-left:22px; margin:10px 0 18px;">
+                <ul style="color:var(--text-soft); text-align:left; line-height:2; padding-left:22px; margin:10px 0 18px;">
                     <li>📖 আয়াত ও হাদিস</li>
                     <li>❓ নাস্তিকতার জবাব</li>
                     <li>✊ প্রতিবাদ</li>
@@ -665,11 +670,11 @@
                     <li>📚 গল্প-উপন্যাস</li>
                 </ul>
 
-                <p style="color:#cbd5e1; line-height:1.8; text-align:left; font-size:15px;">
+                <p style="color:var(--text-soft); line-height:1.8; text-align:left; font-size:15px;">
                     আপনিও লিখতে পারেন! উপরের ডান কোণের <strong style="color:#10b981;">＋</strong> বাটনে ক্লিক করে আপনার লেখা জমা দিন। Admin অনুমোদনের পর সেটি সাইটে প্রকাশিত হবে।
                 </p>
 
-                <p style="color:#94a3b8; font-size:14px; margin-top:18px;">
+                <p style="color:var(--text-faint); font-size:14px; margin-top:18px;">
                     📧 যোগাযোগ: <span style="color:#38bdf8;">abdulhadibinmasud775@gmail.com</span>
                 </p>
 
@@ -698,3 +703,89 @@
             overlay.remove();
         });
     });
+
+    /* =========================
+       PWA: অ্যাপ ইনস্টল বাটন 📲
+       (Chrome/Edge support করে —
+        beforeinstallprompt এলে বাটন দেখা যায়)
+    ========================= */
+
+    let deferredInstallPrompt = null;
+
+    const installBtn = document.createElement('button');
+    installBtn.className = "dock-btn";
+    installBtn.id = "installBtn";
+    installBtn.setAttribute("data-accent", "install");
+    installBtn.setAttribute("data-tip", "অ্যাপ ইনস্টল করুন");
+    installBtn.title = "অ্যাপ ইনস্টল করুন";
+    installBtn.style.display = "none";
+    installBtn.innerHTML = `
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v12"/>
+            <path d="M7 10l5 5 5-5"/>
+            <path d="M4 19h16"/>
+        </svg>
+    `;
+    installBtn.addEventListener('click', function() {
+        if (!deferredInstallPrompt) return;
+        installBtn.style.display = "none";
+        deferredInstallPrompt.prompt();
+        deferredInstallPrompt.userChoice.then(function() {
+            deferredInstallPrompt = null;
+        });
+    });
+
+    window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        installBtn.style.display = "flex";
+    });
+
+    window.addEventListener('appinstalled', function() {
+        installBtn.style.display = "none";
+        deferredInstallPrompt = null;
+    });
+
+    dockMenu.appendChild(installBtn);
+
+    /* =========================
+       থিম টগল 🌙 / ☀️
+       (পছন্দ localStorage-এ সেভ হয়)
+    ========================= */
+
+    const THEME_KEY = "batighor-theme";
+
+    function applyTheme(theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) {
+            meta.setAttribute("content", theme === "light" ? "#f1f5f9" : "#0f172a");
+        }
+    }
+
+    const themeToggleBtn = document.createElement('button');
+    themeToggleBtn.className = "dock-btn";
+    themeToggleBtn.id = "themeToggleBtn";
+    themeToggleBtn.setAttribute("data-accent", "theme");
+    themeToggleBtn.setAttribute("data-tip", "রাত / দিন");
+    themeToggleBtn.title = "রাত / দিন মোড বদলান";
+    themeToggleBtn.innerHTML = `
+        <svg class="i-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round">
+            <circle cx="12" cy="12" r="4.4"/>
+            <path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.1 5.1l1.7 1.7M17.2 17.2l1.7 1.7M18.9 5.1l-1.7 1.7M6.8 17.2l-1.7 1.7"/>
+        </svg>
+        <svg class="i-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+        </svg>
+    `;
+    themeToggleBtn.addEventListener('click', function() {
+        const isLight = document.documentElement.getAttribute("data-theme") === "light";
+        const next = isLight ? "dark" : "light";
+        try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+        applyTheme(next);
+    });
+
+    /* প্রথম লোডে সেভ করা পছন্দ applied (head-এর script আগেই সেট করেছে) */
+    applyTheme(document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark");
+
+    dockMenu.appendChild(themeToggleBtn);

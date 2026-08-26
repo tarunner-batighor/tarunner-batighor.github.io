@@ -1,12 +1,32 @@
 <!DOCTYPE html>  <html lang="bn">  
 <head>  
-    <meta charset="UTF-8">  
-    <meta name="google-site-verification" content="PVklQCflQ1leQWTMHnXAESU-vyPi4K3D8X8ytwZtm3M" />  
+    <meta charset="UTF-8">
+
+    <!-- সেভ করা থিম লোড হওয়ার আগেই সেট করা (flash রোধ) -->
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem("batighor-theme") === "light") {
+                    document.documentElement.setAttribute("data-theme", "light");
+                }
+            } catch (e) {}
+        })();
+    </script>
+
+    <meta name="google-site-verification" content="PVklQCflQ1leQWTMHnXAESU-vyPi4K3D8X8ytwZtm3M" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">  
     <title>তারুণ্যের বাতিঘর</title>  
     <meta name="description" content="তারুণ্যের কলমে, সত্যের কথা — আয়াত ও হাদিস, নাস্তিকতার জবাব, প্রতিবাদ, জীবনী, গল্প-উপন্যাস।">
     <meta name="theme-color" content="#0f172a">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="বাতিঘর">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
     <!-- সোশ্যাল শেয়ার কার্ড (Facebook / WhatsApp / Twitter) -->
     <meta property="og:title" content="তারুণ্যের বাতিঘর">
@@ -98,7 +118,18 @@
     <div id="dynamicContent"></div>  
 </div>  
 
-<script src="main.js"></script>  
+<script src="main.js"></script>
   <script type="module" src="admin.js"></script>
+
+  <!-- PWA: Service Worker register -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("service-worker.js").catch(function (err) {
+          console.error("SW register failed:", err);
+        });
+      });
+    }
+  </script>
 </body>
 </html>

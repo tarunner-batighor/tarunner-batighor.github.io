@@ -2,6 +2,38 @@
    তারুণ্যের বাতিঘর — মূল স্টাইল
 ========================= */
 
+/* ---- থিম ভেরিয়েবল (ডিফল্ট: রাত / Dark) ---- */
+:root {
+    --bg-grad: radial-gradient(1100px 700px at 50% 18%, #17233f 0%, #0f172a 55%, #090e1c 100%);
+    --text-main: #f8fafc;
+    --text-soft: #cbd5e1;
+    --text-faint: #94a3b8;
+    --gold: #fbbf24;
+    --gold-bright: #fef3c7;
+    --gold-deep: #f59e0b;
+    --panel-bg: #1e293b;
+    --panel-border: #334155;
+    --row-bg: #0f172a;
+    --row-border: #334155;
+    --row-title: #ffffff;
+}
+
+/* ---- দিন / Light থিম ---- */
+html[data-theme="light"] {
+    --bg-grad: radial-gradient(1100px 700px at 50% 18%, #dbeafe 0%, #f1f5f9 55%, #e2e8f0 100%);
+    --text-main: #0f172a;
+    --text-soft: #334155;
+    --text-faint: #64748b;
+    --gold: #b45309;
+    --gold-bright: #d97706;
+    --gold-deep: #92400e;
+    --panel-bg: #ffffff;
+    --panel-border: #e2e8f0;
+    --row-bg: #f8fafc;
+    --row-border: #e2e8f0;
+    --row-title: #0f172a;
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -10,7 +42,7 @@
 
 body {
     font-family: 'Hind Siliguri', 'Noto Sans Bengali', 'Segoe UI', Arial, sans-serif;
-    color: #f8fafc;
+    color: var(--text-main);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -18,8 +50,9 @@ body {
     justify-content: center;
     overflow-x: hidden;
     padding: 28px 16px;
-    background: radial-gradient(1100px 700px at 50% 18%, #17233f 0%, #0f172a 55%, #090e1c 100%);
+    background: var(--bg-grad);
     background-attachment: fixed;
+    transition: background .35s ease, color .35s ease;
 }
 
 /* ---- তারাভরা আকাশ ---- */
@@ -47,6 +80,11 @@ body::before {
     50% { opacity: 1; }
 }
 
+/* দিনের থিমে তারা দেখানো হবে না */
+html[data-theme="light"] body::before {
+    display: none;
+}
+
 /* ---- হিরো হেডার ---- */
 
 .site-header {
@@ -71,18 +109,18 @@ body::before {
     font-weight: 900;
     font-size: clamp(2.2rem, 7vw, 3.1rem);
     line-height: 1.3;
-    background: linear-gradient(180deg, #fef3c7 0%, #fbbf24 55%, #f59e0b 100%);
+    background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 55%, var(--gold-deep) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    color: #fbbf24;
+    color: var(--gold);
     filter: drop-shadow(0 4px 18px rgba(245, 158, 11, .22));
     margin-bottom: 8px;
 }
 
 .site-subtitle {
     font-size: 1.02rem;
-    color: #cbd5e1;
+    color: var(--text-soft);
     letter-spacing: .3px;
 }
 
@@ -349,7 +387,7 @@ body::before {
 .hint-text {
     margin-top: 30px;
     text-align: center;
-    color: #fbbf24;
+    color: var(--gold);
     font-size: 1rem;
     font-weight: 600;
     letter-spacing: .5px;
@@ -417,7 +455,7 @@ body::before {
     .category-header-title {  
         font-family: 'Noto Serif Bengali', serif;  
         font-size: 1.9rem;  
-        color: #ffffff;  
+        color: var(--text-main);  
         margin-bottom: 20px;  
         font-weight: 700;  
     }  
@@ -606,6 +644,14 @@ body::before {
 .dock-btn[data-accent="search"]:hover { background: rgba(56, 189, 248, 0.16); color: #38bdf8; }
 .dock-btn[data-accent="about"]:hover  { background: rgba(245, 158, 11, 0.16); color: #fbbf24; }
 .dock-btn[data-accent="admin"]:hover  { background: rgba(224, 82, 45, 0.16); color: #fb923c; }
+.dock-btn[data-accent="install"]:hover{ background: rgba(129, 140, 248, 0.16); color: #818cf8; }
+.dock-btn[data-accent="theme"]:hover  { background: rgba(251, 191, 36, 0.16); color: #fbbf24; }
+
+/* ---- থিম আইকন: রাত = সূর্য দেখাও, দিন = চাঁদ দেখাও ---- */
+.dock-btn .i-sun, .dock-btn .i-moon { display: none; }
+html[data-theme="dark"] .dock-btn .i-sun,
+html:not([data-theme]) .dock-btn .i-sun { display: block; }
+html[data-theme="light"] .dock-btn .i-moon { display: block; }
 
 /* ---- JS টুলটিপ (বাটনের বাম দিকে ভাসে) ---- */
 
