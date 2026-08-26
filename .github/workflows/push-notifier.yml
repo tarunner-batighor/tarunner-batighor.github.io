@@ -78,6 +78,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          existing=$(gh issue list --state open \
+            --search "in:title,Push Notifier error" \
+            --json number --jq '.[0].number' 2>/dev/null || true)
+          if [ -n "$existing" ]; then
+            echo "Issue #$existing already reports this — no new issue."
+            exit 0
+          fi
           gh issue create \
             --title "🔧 Push Notifier error (auto-report)" \
             --body-file /tmp/push-error.md
