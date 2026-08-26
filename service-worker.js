@@ -5,15 +5,15 @@
    - পরে থেকে লোড হলে ফায়ারবেস থেকে লাইভ পোস্ট আসে
    ============================================================ */
 
-const CACHE_NAME = "batighor-v7";
+const CACHE_NAME = "batighor-v8";
 
 /* সাইট চালানোর জন্য মৌলিক ফাইলগুলো (version bump -> নতুন fetch) */
 const APP_SHELL = [
     "/",
     "index.html",
-    "style.css?v=7",
-    "main.js?v=7",
-    "admin.js?v=2",
+    "style.css?v=8",
+    "main.js?v=8",
+    "admin.js?v=3",
     "website-posts.js",
     "manifest.webmanifest",
     "favicon.svg",
@@ -40,6 +40,61 @@ self.addEventListener("message", function (event) {
         self.skipWaiting();
     }
 });
+/* ---- Push: Firebase Cloud Messaging (Web Push) ----
+   Cloud Function থেকে push message আসে (post accept/reject) →
+   site বন্ধ/পেছনে রাখা অবস্থায়ও ফোনে notification দেখায় */
+self.addEventListener("push", function (event) {
+    let data = {};
+    try {
+        data = event.data ? event.data.json() : {};
+    } catch (e) {
+        data = { body: event.data ? event.data.text() : "" };
+    }
+
+    const title = data.title || "তারুণ্যের বাতিঘর";
+    const options = {
+        body: data.body || "",
+        icon: "icons/icon-192.png",
+        badge: "icons/icon-192.png",
+        vibrate: [100, 50, 100],
+        renotify: true,
+        tag: "batighor-post-update",
+        data: { url: data.url || "/" }
+    };
+
+    event.waitUntil(self.registration.showNotification(title, options));
+});
+
+/* ---- Notification click → সংশ্লিষ্ট post-এ নিয়ে যায় ---- */
+self.addEventListener("notificationclick", function (event) {
+    event.notification.close();
+
+    const targetUrl =
+        (event.notification.data && event.notification.data.url) || "/";
+
+    event.waitUntil(
+        self.clients
+            .matchAll({ type: "window", includeUncontrolled: true })
+            .then(function (winList) {
+                for (const client of winList) {
+                    if ("focus" in client) {
+                        client.focus();
+                        try {
+                            if (
+                                client.url &&
+                                client.url.indexOf(targetUrl) === -1
+                            ) {
+                                client.navigate(targetUrl);
+                            }
+                        } catch (e) { /* ignore */ }
+                        return client;
+                    }
+                }
+                return self.clients.openWindow(targetUrl);
+            })
+    );
+});
+
 
 /* ---- Activate: পুরনো version-এর cache মুছে ফেলি ---- */
 self.addEventListener("activate", function (event) {

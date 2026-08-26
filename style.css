@@ -869,3 +869,400 @@ html[data-theme="light"] .dock-btn .i-moon { display: block; }
     transform: translateY(-50%);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
+
+/* ============================================================
+   USER ACCOUNT + NOTIFICATION SYSTEM
+   (Bell/Profile dock বাটন, Notification Center,
+    Profile Panel, My Posts, Push status)
+   ============================================================ */
+
+/* ---- Dock-এর নতুন accent (hover রং) ---- */
+
+.dock-btn[data-accent="notifications"]:hover { background: rgba(56, 189, 248, 0.16); color: #38bdf8; }
+.dock-btn[data-accent="profile"]:hover       { background: rgba(251, 191, 36, 0.16); color: #fbbf24; }
+
+/* ---- Bell-এর unread badge ---- */
+
+.dock-badge {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 800;
+    line-height: 17px;
+    text-align: center;
+    display: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+}
+
+.dock-badge.visible { display: block; }
+
+/* ---- Profile বাটনে ছোট avatar ---- */
+
+.pf-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+}
+
+/* ---- Shared panel (overlay + slide-up panel) ---- */
+
+.app-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99998;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+    opacity: 0;
+    transition: opacity .22s ease;
+}
+
+@media (min-width: 480px) {
+    .app-overlay {
+        align-items: center;
+        padding: 20px;
+    }
+}
+
+.app-overlay.show { opacity: 1; }
+
+.app-panel {
+    width: 100%;
+    max-width: 520px;
+    max-height: 85vh;
+    background: var(--panel-bg);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    transform: translateY(28px);
+    transition: transform .26s cubic-bezier(.22, 1, .36, 1);
+}
+
+.app-overlay.show .app-panel { transform: translateY(0); }
+
+@media (min-width: 480px) {
+    .app-panel { border-radius: 18px; }
+}
+
+.app-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 22px 12px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--panel-border);
+}
+
+.app-panel-head h3 {
+    margin: 0;
+    color: #38bdf8;
+    font-size: 17px;
+    font-weight: 800;
+}
+
+.app-close-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-faint);
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    font-size: 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background .15s ease, color .15s ease;
+}
+
+.app-close-btn:hover { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+.app-panel-body {
+    padding: 16px 22px 22px;
+    overflow-y: auto;
+    flex: 1;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ---- Notification Center ---- */
+
+.nc-empty { text-align: center; padding: 30px 12px; }
+.nc-empty-icon { font-size: 42px; margin-bottom: 10px; }
+.nc-empty p { color: var(--text-soft); line-height: 1.7; font-size: 14.5px; margin: 0 0 16px; }
+
+.nc-login-btn {
+    display: flex;
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: #fff;
+    color: #1f2937;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14.5px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    transition: background .15s ease, transform .15s ease;
+}
+
+.nc-login-btn:hover { background: #f1f5f9; transform: translateY(-1px); }
+
+.nc-head-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+
+.nc-mark-all {
+    border: 1px solid var(--panel-border);
+    background: transparent;
+    color: var(--text-faint);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .15s ease, color .15s ease;
+}
+
+.nc-mark-all:hover { background: rgba(148, 163, 184, 0.15); color: var(--text-main); }
+
+.nc-loading {
+    color: var(--text-faint);
+    text-align: center;
+    padding: 22px;
+    font-size: 14px;
+    margin: 0;
+}
+
+.nc-item {
+    position: relative;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    background: var(--row-bg);
+    border: 1px solid var(--row-border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+
+.nc-item:hover { transform: translateY(-1px); }
+
+.nc-item.unread {
+    border-color: rgba(251, 191, 36, 0.5);
+    background: linear-gradient(0deg, var(--row-bg), rgba(251, 191, 36, 0.07));
+}
+
+.nc-item-icon { font-size: 18px; line-height: 1.4; }
+
+.nc-item-body { flex: 1; min-width: 0; }
+
+.nc-item-msg {
+    color: var(--text-main);
+    font-size: 14px;
+    line-height: 1.55;
+    font-weight: 600;
+}
+
+.nc-item-meta {
+    color: var(--text-faint);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.nc-dot {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ef4444;
+    flex-shrink: 0;
+}
+
+/* ---- Profile / Account Panel ---- */
+
+.pf-login-card { text-align: center; padding: 18px 10px; }
+.pf-login-avatar { font-size: 48px; line-height: 1; }
+.pf-login-card h4 { color: var(--text-main); margin: 12px 0 8px; font-size: 16.5px; }
+.pf-login-card p { color: var(--text-soft); font-size: 13.5px; line-height: 1.75; margin: 0 0 18px; }
+
+.pf-google-btn {
+    display: flex;
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: #fff;
+    color: #1f2937;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14.5px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    transition: background .15s ease, transform .15s ease;
+}
+
+.pf-google-btn:hover { background: #f1f5f9; transform: translateY(-1px); }
+
+.pf-g {
+    font-weight: 900;
+    font-size: 17px;
+    color: #4285F4;
+    display: inline-block;
+}
+
+.pf-account { text-align: center; padding: 8px 0 18px; }
+
+.pf-avatar-lg {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--panel-border);
+    margin-bottom: 12px;
+}
+
+.pf-name { color: var(--text-main); font-size: 16.5px; font-weight: 800; word-break: break-word; }
+
+.pf-email {
+    color: var(--text-faint);
+    font-size: 13px;
+    margin-top: 4px;
+    word-break: break-all;
+}
+
+.pf-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.pf-action-btn {
+    width: 100%;
+    background: rgba(148, 163, 184, 0.08);
+    border: 1px solid var(--panel-border);
+    color: var(--text-soft);
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    transition: background .15s ease, color .15s ease;
+}
+
+.pf-action-btn:hover { background: rgba(148, 163, 184, 0.18); color: var(--text-main); }
+
+.pf-action-btn.pf-logout {
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.35);
+}
+
+.pf-action-btn.pf-logout:hover { background: rgba(248, 113, 113, 0.12); color: #f87171; }
+
+.pf-push-status {
+    color: var(--text-faint);
+    font-size: 12.5px;
+    text-align: center;
+    line-height: 1.6;
+    padding: 0 4px;
+}
+
+/* ---- My Posts ---- */
+
+.mp-list { margin-top: 16px; }
+
+.mp-item {
+    background: var(--row-bg);
+    border: 1px solid var(--row-border);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.mp-head { padding: 12px 14px; cursor: pointer; }
+.mp-head:active { background: rgba(148, 163, 184, 0.1); }
+
+.mp-title {
+    color: var(--text-main);
+    font-weight: 700;
+    font-size: 14.5px;
+    line-height: 1.45;
+}
+
+.mp-meta {
+    color: var(--text-faint);
+    font-size: 12px;
+    margin-top: 6px;
+    line-height: 2;
+}
+
+.mp-content {
+    padding: 12px 14px 14px;
+    color: var(--text-soft);
+    font-size: 14px;
+    line-height: 1.75;
+    white-space: pre-line;
+    border-top: 1px solid var(--row-border);
+}
+
+/* ---- Status chips (Pending/Published/Rejected) ---- */
+
+.chip {
+    display: inline-block;
+    padding: 2.5px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 800;
+    margin-left: 6px;
+    vertical-align: 1px;
+    white-space: nowrap;
+}
+
+.chip-pending   { background: rgba(245, 158, 11, 0.16); color: #fbbf24; }
+.chip-published { background: rgba(16, 185, 129, 0.16); color: #34d399; }
+.chip-rejected  { background: rgba(239, 68, 68, 0.16); color: #f87171; }
+
+html[data-theme="light"] .chip-pending   { color: #b45309; }
+html[data-theme="light"] .chip-published { color: #047857; }
+html[data-theme="light"] .chip-rejected  { color: #b91c1c; }
+
+/* ---- পোস্ট পেজে লেখকের নাম ---- */
+
+.post-author {
+    margin-top: 18px;
+    text-align: center;
+    color: var(--text-faint);
+    font-size: 13.5px;
+    font-weight: 600;
+}

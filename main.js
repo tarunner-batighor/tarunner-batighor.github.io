@@ -243,6 +243,7 @@
                 <h2 class="category-header-title">${escapeHtml(post.title || "")}</h2>
                 <div class="post-card">
                     <div class="post-content">${escapeHtml(post.content || "")}</div>
+                    ${post.authorName ? '<p class="post-author">✍️ লেখক: ' + escapeHtml(post.authorName) + '</p>' : ''}
                     <div class="post-footer">
                         <div class="post-tags">${escapeHtml(CAT_NAMES[post.category] || post.category || "সাধারণ")}</div>
                         <div class="post-date">${postDate(post)}</div>
@@ -884,3 +885,463 @@
             console.error("SW register failed:", err);
         });
     })();
+
+    /* =========================
+       USER ACCOUNT + NOTIFICATION SYSTEM
+       (Google Login, Notification Bell,
+        My Posts, Push Enable)
+    ========================= */
+
+    let authModule = null;
+    let pushModule = null;
+    let notifModule = null;
+    let authStateUser = null;
+    let notifUnsubscribe = null;
+
+    async function loadModules() {
+        if (!authModule) authModule = await import("./auth.js");
+        if (!notifModule) notifModule = await import("./notifications.js");
+        if (!pushModule) pushModule = await import("./push.js");
+        return { authModule, pushModule, notifModule };
+    }
+
+    /* ---------- ডক-এর Bell বাটন (badge সহ) ---------- */
+
+    const bellBtn = document.createElement('button');
+    bellBtn.className = "dock-btn";
+    bellBtn.id = "notifBellBtn";
+    bellBtn.setAttribute("data-accent", "notifications");
+    bellBtn.setAttribute("data-tip", "নোটিফিকেশন");
+    bellBtn.title = "নোটিফিকেশন";
+    bellBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.7 21a2 2 0 0 1-3.4 0"/>
+        </svg>
+        <span class="dock-badge" id="notifBadge"></span>
+    `;
+    dockMenu.insertBefore(bellBtn, dockMenu.firstChild);
+
+    function setNotifBadge(count) {
+        const badge = document.getElementById("notifBadge");
+        if (!badge) return;
+        if (count > 0) {
+            badge.textContent = count > 9 ? "9+" : String(count);
+            badge.classList.add("visible");
+        } else {
+            badge.classList.remove("visible");
+        }
+    }
+
+    /* ---------- ডক-এর Profile বাটন ---------- */
+
+    const profileBtn = document.createElement('button');
+    profileBtn.className = "dock-btn";
+    profileBtn.id = "profileBtn";
+    profileBtn.setAttribute("data-accent", "profile");
+    profileBtn.setAttribute("data-tip", "আমার অ্যাকাউন্ট");
+    profileBtn.title = "আমার অ্যাকাউন্ট";
+    profileBtn.innerHTML = `
+        <svg class="pf-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/>
+        </svg>
+    `;
+    dockMenu.insertBefore(profileBtn, bellBtn);
+
+    function updateProfileBtnIcon(user) {
+        const img = profileBtn.querySelector("img.pf-avatar");
+        if (img) img.remove();
+        const icon = profileBtn.querySelector("svg.pf-icon");
+        if (user && user.photoURL) {
+            icon.style.display = "none";
+            const av = document.createElement("img");
+            av.className = "pf-avatar";
+            av.src = user.photoURL;
+            av.alt = "";
+            av.referrerPolicy = "no-referrer";
+            profileBtn.prepend(av);
+        } else if (user) {
+            icon.style.display = "";
+            profileBtn.setAttribute("data-tip", user.displayName || "আমার অ্যাকাউন্ট");
+        } else {
+            icon.style.display = "";
+            profileBtn.setAttribute("data-tip", "লগইন করুন");
+        }
+    }
+
+    /* ---------- Shared overlay helper ---------- */
+
+    function openAppPanel(innerHtml, opts) {
+        opts = opts || {};
+        const overlay = document.createElement('div');
+        overlay.className = "app-overlay";
+        overlay.innerHTML =
+            '<div class="app-panel">' +
+                '<div class="app-panel-head">' +
+                    '<h3>' + (opts.title || "") + '</h3>' +
+                    '<button class="app-close-btn" type="button">✕</button>' +
+                '</div>' +
+                '<div class="app-panel-body">' + innerHtml + '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () { overlay.classList.add("show"); });
+        });
+        const close = function () {
+            overlay.classList.remove("show");
+            setTimeout(function () { overlay.remove(); }, 260);
+        };
+        overlay.querySelector(".app-close-btn").addEventListener("click", close);
+        overlay.addEventListener("click", function (e) {
+            if (e.target === overlay) close();
+        });
+        return { overlay, close };
+    }
+
+    /* ---------- Notification Center ---------- */
+
+    let notifPanel = null;
+
+    function notificationTime(n) {
+        if (n.createdAt && n.createdAt.seconds) {
+            return new Date(n.createdAt.seconds * 1000).toLocaleDateString("bn-BD");
+        }
+        return "";
+    }
+
+    async function openNotifCenter() {
+        if (notifPanel) { notifPanel.close(); notifPanel = null; return; }
+
+        const m = await loadModules();
+        const user = m.authModule.currentUser();
+
+        let bodyHtml;
+        if (!user) {
+            bodyHtml =
+                '<div class="nc-empty">' +
+                    '<div class="nc-empty-icon">🔔</div>' +
+                    '<p>নোটিফিকেশন দেখতে <strong>Google দিয়ে লগইন</strong> করুন</p>' +
+                    '<button class="nc-login-btn" type="button">🔵 Google দিয়ে লগইন</button>' +
+                '</div>';
+        } else {
+            bodyHtml =
+                '<div class="nc-head-actions">' +
+                    '<button class="nc-mark-all" id="ncMarkAll" type="button" style="display:none;">সব পঠিত করুন</button>' +
+                '</div>' +
+                '<div id="ncList" class="nc-list"><p class="nc-loading">লোড হচ্ছে...</p></div>';
+        }
+
+        notifPanel = openAppPanel(bodyHtml, { title: "🔔 নোটিফিকেশন" });
+
+        if (!user) {
+            notifPanel.overlay.querySelector(".nc-login-btn").addEventListener("click", function () {
+                m.authModule.googleSignIn()
+                    .then(function () {
+                        notifPanel.close();
+                        notifPanel = null;
+                        setTimeout(openNotifCenter, 350);
+                    })
+                    .catch(function (err) {
+                        console.error("Sign-in failed:", err);
+                    });
+            });
+            return;
+        }
+
+        const listEl = notifPanel.overlay.querySelector("#ncList");
+        const markAllBtn = notifPanel.overlay.querySelector("#ncMarkAll");
+        let lastList = [];
+
+        const unsub = m.notifModule.subscribeNotifications(
+            user.uid,
+            function (list) {
+                lastList = list;
+                if (list.length === 0) {
+                    listEl.innerHTML = '<div class="nc-empty"><div class="nc-empty-icon">📭</div><p>এখনো কোনো নোটিফিকেশন নেই</p></div>';
+                    markAllBtn.style.display = "none";
+                    return;
+                }
+                let html = "";
+                list.forEach(function (n) {
+                    const icon = n.type === "approved" ? "✅" : "❌";
+                    html +=
+                        '<div class="nc-item' + (n.read ? "" : " unread") + '" data-notif-id="' + n.id + '" data-type="' + n.type + '" data-post-id="' + (n.postId || "") + '">' +
+                            '<div class="nc-item-icon">' + icon + '</div>' +
+                            '<div class="nc-item-body">' +
+                                '<div class="nc-item-msg">' + escapeHtml(n.message || "") + '</div>' +
+                                '<div class="nc-item-meta">' + escapeHtml(n.postTitle || "") + ' • ' + notificationTime(n) + '</div>' +
+                            '</div>' +
+                            (n.read ? "" : '<span class="nc-dot"></span>') +
+                        '</div>';
+                });
+                listEl.innerHTML = html;
+                const unreadCount = list.filter(function (x) { return !x.read; }).length;
+                markAllBtn.style.display = unreadCount > 0 ? "" : "none";
+                setNotifBadge(unreadCount);
+            },
+            function (count) { setNotifBadge(count); }
+        );
+
+        markAllBtn.addEventListener("click", function () {
+            m.notifModule.markAllNotificationsRead(user.uid, lastList).catch(function (e) {
+                console.error(e);
+            });
+        });
+
+        listEl.addEventListener("click", function (e) {
+            const item = e.target.closest(".nc-item");
+            if (!item) return;
+            const id = item.getAttribute("data-notif-id");
+            const type = item.getAttribute("data-type");
+            const postId = item.getAttribute("data-post-id");
+
+            /* read mark -> live subscription নিজে badge update করবে */
+            m.notifModule.markNotificationRead(user.uid, id).catch(function () {});
+            item.classList.remove("unread");
+            const dot = item.querySelector(".nc-dot");
+            if (dot) dot.remove();
+
+            if (type === "approved" && postId) {
+                notifPanel.close();
+                notifPanel = null;
+                location.hash = "post/" + postId;
+            } else if (postId) {
+                /* rejected -> My Posts এ দেখাও */
+                notifPanel.close();
+                notifPanel = null;
+                openProfilePanel(true);
+            }
+        });
+
+        /* panel close হলে unsubscribe না (auth listener চলতে থাকবে);
+           শুধু panel reference clear */
+        const origClose = notifPanel.close;
+        notifPanel.close = function () {
+            try { unsub(); } catch (e) {}
+            origClose();
+        };
+    }
+
+    /* badge count (live subscription থেকে আসে) */
+    let setNotifBadgeCount = 0;
+
+    bellBtn.addEventListener("click", function () {
+        openNotifCenter();
+    });
+
+    /* ---------- Profile Panel (Account + My Posts + Push) ---------- */
+
+    let profilePanel = null;
+
+    async function openProfilePanel(showMyPosts) {
+        if (profilePanel) { profilePanel.close(); profilePanel = null; return; }
+        const m = await loadModules();
+        const user = m.authModule.currentUser();
+
+        let bodyHtml;
+        if (!user) {
+            bodyHtml =
+                '<div class="pf-login-card">' +
+                    '<div class="pf-login-avatar">👤</div>' +
+                    '<h4>আপনার Account-এ লগইন করুন</h4>' +
+                    '<p>পোস্ট জমা দেওয়া, status দেখা আর notification পেতে Google Account ব্যবহার করুন।</p>' +
+                    '<button class="pf-google-btn" type="button">' +
+                        '<span class="pf-g">G</span> Google দিয়ে লগইন করুন' +
+                    '</button>' +
+                '</div>';
+        } else {
+            bodyHtml =
+                '<div class="pf-account">' +
+                    '<img class="pf-avatar-lg" src="' + escapeHtml(user.photoURL || "") + '" alt="" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'">' +
+                    '<div class="pf-name">' + escapeHtml(user.displayName || "User") + '</div>' +
+                    '<div class="pf-email">' + escapeHtml(user.email || "") + '</div>' +
+                '</div>' +
+                '<div class="pf-actions">' +
+                    '<button class="pf-action-btn" id="pfMyPostsBtn" type="button">📝 আমার পোস্ট</button>' +
+                    '<button class="pf-action-btn" id="pfPushBtn" type="button">🔔 Push Notification চালু করুন</button>' +
+                    '<div class="pf-push-status" id="pfPushStatus"></div>' +
+                    '<button class="pf-action-btn pf-logout" id="pfLogoutBtn" type="button">🚪 Logout</button>' +
+                '</div>' +
+                '<div id="pfMyPostsBox" style="display:' + (showMyPosts ? "block" : "none") + ';"></div>';
+        }
+
+        profilePanel = openAppPanel(bodyHtml, { title: showMyPosts ? "📝 আমার পোস্ট" : "👤 আমার অ্যাকাউন্ট" });
+
+        if (!user) {
+            profilePanel.overlay.querySelector(".pf-google-btn").addEventListener("click", function () {
+                m.authModule.googleSignIn()
+                    .then(function () {
+                        profilePanel.close();
+                        profilePanel = null;
+                        setTimeout(function () { openProfilePanel(); }, 350);
+                    })
+                    .catch(function (err) {
+                        console.error("Sign-in failed:", err);
+                        const card = profilePanel.overlay.querySelector(".pf-login-card");
+                        const p = document.createElement("p");
+                        p.style.cssText = "color:#f87171;font-size:13px;margin-top:10px;";
+                        p.textContent = "❌ লগইন ব্যর্থ: " + (err.message || "").split(" (")[0];
+                        card.appendChild(p);
+                    });
+            });
+            return;
+        }
+
+        /* Logout */
+        profilePanel.overlay.querySelector("#pfLogoutBtn").addEventListener("click", function () {
+            m.authModule.logout().then(function () {
+                profilePanel.close();
+                profilePanel = null;
+            });
+        });
+
+        /* My Posts */
+        const myPostsBtn = profilePanel.overlay.querySelector("#pfMyPostsBtn");
+        const myPostsBox = profilePanel.overlay.querySelector("#pfMyPostsBox");
+
+        function renderMyPosts() {
+            myPostsBox.innerHTML = '<p class="nc-loading">লোড হচ্ছে...</p>';
+            import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js").then(function (fs) {
+                const fdb = m.notifModule.db;
+                const q = fs.query(
+                    fs.collection(fdb, "Posts"),
+                    fs.where("authorUid", "==", user.uid)
+                );
+                return fs.getDocs(q);
+            }).then(function (snap) {
+                    if (!profilePanel) return;
+                    const docs = [];
+                    snap.forEach(function (d) { docs.push({ id: d.id, ...d.data() }); });
+                    docs.sort(function (a, b) {
+                        const ta = (a.createdAt && a.createdAt.seconds) || 0;
+                        const tb = (b.createdAt && b.createdAt.seconds) || 0;
+                        return tb - ta;
+                    });
+                    if (docs.length === 0) {
+                        myPostsBox.innerHTML = '<div class="nc-empty"><div class="nc-empty-icon">📝</div><p>আপনি এখনো কোনো পোস্ট জমা দেয়নি</p></div>';
+                        return;
+                    }
+                    const chips = {
+                        pending: ['<span class="chip chip-pending">⏳ Pending</span>'],
+                        published: ['<span class="chip chip-published">✅ Published</span>'],
+                        rejected: ['<span class="chip chip-rejected">❌ Rejected</span>']
+                    };
+                    let html = '<div class="mp-list">';
+                    docs.forEach(function (p) {
+                        const d = (p.createdAt && p.createdAt.seconds)
+                            ? new Date(p.createdAt.seconds * 1000).toLocaleDateString("bn-BD") : "";
+                        html +=
+                            '<div class="mp-item">' +
+                                '<div class="mp-head" data-post-id="' + p.id + '" data-status="' + p.status + '">' +
+                                    '<div class="mp-title">' + escapeHtml(p.title || "") + '</div>' +
+                                    '<div class="mp-meta">' +
+                                        escapeHtml(CAT_NAMES[p.category] || p.category || "") + ' • 📅 ' + d +
+                                        ' ' + (chips[p.status] ? chips[p.status][0] : "") +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="mp-content" style="display:none;">' + escapeHtml(p.content || "") + '</div>' +
+                            '</div>';
+                    });
+                    html += '</div>';
+                    myPostsBox.innerHTML = html;
+
+                    myPostsBox.querySelectorAll(".mp-head").forEach(function (head) {
+                        head.addEventListener("click", function () {
+                            const status = head.getAttribute("data-status");
+                            const postId = head.getAttribute("data-post-id");
+                            if (status === "published") {
+                                profilePanel.close();
+                                profilePanel = null;
+                                location.hash = "post/" + postId;
+                                return;
+                            }
+                            const box = head.parentElement.querySelector(".mp-content");
+                            box.style.display = box.style.display === "none" ? "block" : "none";
+                        });
+                    });
+            }).catch(function (err) {
+                console.error(err);
+                myPostsBox.innerHTML = '<p style="color:#f87171;">❌ লোড করা যায়নি: ' + escapeHtml(err.message) + '</p>';
+            });
+        }
+
+        myPostsBtn.addEventListener("click", function () {
+            const box = profilePanel.overlay.querySelector("#pfMyPostsBox");
+            if (box.style.display === "none") {
+                box.style.display = "block";
+                renderMyPosts();
+            } else {
+                box.style.display = "none";
+            }
+        });
+
+        if (showMyPosts) renderMyPosts();
+
+        /* Push enable */
+        const pushBtn = profilePanel.overlay.querySelector("#pfPushBtn");
+        const pushStatus = profilePanel.overlay.querySelector("#pfPushStatus");
+
+        function refreshPushStatus() {
+            const st = m.pushModule.pushStatus();
+            if (st === "unsupported") {
+                pushStatus.textContent = "⚠️ এই browser-এ Push Notification supported নয়";
+            } else if (st === "not_configured") {
+                pushStatus.textContent = "⚙️ Push এখনো setup করা হয়নি (admin সেটআপ করলেই চালু হবে)";
+            } else if (st === "granted") {
+                pushStatus.textContent = "✅ Push Notification চালু আছে";
+            } else if (st === "denied") {
+                pushStatus.textContent = "🔕 Browser-এ notification বন্ধ আছে — Settings থেকে খুলুন";
+            } else {
+                pushStatus.textContent = "";
+            }
+        }
+        refreshPushStatus();
+
+        pushBtn.addEventListener("click", function () {
+            m.pushModule.enablePush().then(function (res) {
+                if (res.ok) {
+                    pushStatus.textContent = "✅ Push Notification চালু হয়েছে!";
+                } else if (res.reason === "denied") {
+                    pushStatus.textContent = "🔕 Permission দেয়নি — browser settings থেকে notification খুলুন";
+                } else if (res.reason === "not_configured") {
+                    pushStatus.textContent = "⚙️ Push এখনো setup করা হয়নি (admin সেটআপ করলেই চালু হবে)";
+                } else {
+                    pushStatus.textContent = "❌ চালু করা যায়নি — আবার চেষ্টা করুন";
+                }
+            });
+        });
+    }
+
+    profileBtn.addEventListener("click", function () {
+        openProfilePanel();
+    });
+
+    /* ---------- Auth state sync ---------- */
+
+    loadModules().then(function (m) {
+        m.authModule.onAuthChange(function (user) {
+            authStateUser = user;
+            updateProfileBtnIcon(user);
+
+            /* পুরনো subscription বন্ধ */
+            if (notifUnsubscribe) {
+                try { notifUnsubscribe(); } catch (e) {}
+                notifUnsubscribe = null;
+            }
+
+            if (user) {
+                /* bell badge live update */
+                notifUnsubscribe = m.notifModule.subscribeNotifications(
+                    user.uid,
+                    function () {},
+                    function (count) { setNotifBadgeCount = count; setNotifBadge(count); }
+                );
+            } else {
+                setNotifBadgeCount = 0;
+                setNotifBadge(0);
+            }
+        });
+    }).catch(function (e) {
+        console.error("Auth modules load failed:", e);
+    });

@@ -1,0 +1,10 @@
+# Cloud Functions
+functions/node_modules/
+functions/.env
+functions/*.log
+
+# Firebase local state
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log

@@ -1,19 +1,26 @@
 rules_version = '2';
 
 // ============================================================
-//  তারুণ্যের বাতিঘর — Firestore Security Rules
-//  এই নিয়মগুলো Firebase Console-এ প্রয়োগ করতে হবে:
-//  Firebase Console → Firestore Database → Rules → নিচের কোড
-//  পেস্ট করে → Publish
+//  তারুণ্যের বাতিঘর — Firestore Security Rules (v2 — User System)
+//  Deploy: firebase deploy (firebase.json-এ rules path configured)
+//
+//  নতুন ফিচার:
+//  - Users (Google Login) কেউই শুধু নিজের data দেখতে পারবে
+//  - প্রতিটি নতুন পোস্টে authorUid থাকবে (নিজের uid)
+//  - Notification শুধু Cloud Function লিখতে পারবে
+//  - Push token শুধু মালিক নিজের manage করতে পারবে
 // ============================================================
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Admin কিনা যাচাই — শুধু নির্দিষ্ট ইমেইলের
-    // লগইন করা ব্যবহারকারীই Admin
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Admin — শুধু নির্দিষ্ট ইমেইলের লগইন করা ব্যবহারকারী
     function isAdmin() {
-      return request.auth != null
+      return isSignedIn()
         && request.auth.token.email == 'abdulhadibinmasud775@gmail.com';
     }
 
@@ -21,14 +28,20 @@ service cloud.firestore {
 
       // পড়া (read):
       //   - সবাই শুধু 'published' পোস্ট পড়তে পারবে
-      //   - Admin সব পোস্ট পড়তে পারবেন (pending/deleted সহ)
-      allow get, list: if resource.data.status == 'published' || isAdmin();
+      //   - লেখক নিজে নিজের পোস্ট (pending/rejected) পড়তে পারবে
+      //   - Admin সব পোস্ট পড়তে পারবেন (deleted সহ)
+      allow get, list: if resource.data.status == 'published'
+        || (isSignedIn() && resource.data.authorUid == request.auth.uid)
+        || isAdmin();
 
       // নতুন পোস্ট জমা দেওয়া (create):
-      //   - যে কেউ পোস্ট জমা দিতে পারবে,
-      //     কিন্তু শুধুমাত্র 'pending' অবস্থায় —
-      //     কেউ সরাসরি 'published' লিখে দিতে পারবে না
-      allow create: if request.resource.data.status == 'pending'
+      //   - শুধু লগইন করা user (Google Login)
+      //   - status চিরকাল 'pending' — কেউ সরাসরি 'published'
+      //     লিখে দিতে পারবে না
+      //   - authorUid অবশ্যই নিজের uid হতে হবে
+      allow create: if isSignedIn()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
         && request.resource.data.title.size() <= 300
@@ -42,6 +55,35 @@ service cloud.firestore {
       // পোস্ট বদলানো বা মোছা (update/delete):
       //   - শুধুমাত্র Admin পারবেন
       allow update, delete: if isAdmin();
+    }
+
+    match /users/{uid} {
+
+      // নিজের account — শুধু নিজেকে পড়তে/বাদলাতে পারবে
+      allow get, update: if isSignedIn() && request.auth.uid == uid;
+
+      // নতুন account খোলা — শুধু নিজের জন্য, email verify করা
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.email == request.auth.token.email;
+
+      allow delete: if false;
+
+      // Notification:
+      //   - মালিক পড়তে / read-mark করতে পারবে
+      //   - create শুধু Cloud Function (admin SDK) পারবে
+      match /notifications/{notifId} {
+        allow get, list, update: if isSignedIn() && request.auth.uid == uid;
+        allow delete: if false;
+        allow create: if false;
+      }
+
+      // Push token:
+      //   - মালিক নিজের ডিভাইস/ব্রাউজারের token manage করবে
+      match /pushTokens/{tokenId} {
+        allow get, list, create, update, delete:
+          if isSignedIn() && request.auth.uid == uid;
+      }
     }
   }
 }

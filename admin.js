@@ -61,6 +61,41 @@
 
   addPostBtn.addEventListener("click", async () => {
 
+    /* =========================
+       USER IDENTITY — Google Login
+       (login ছাড়া পোস্ট জমা যাবে না,
+        যাতে প্রতিটি পোস্টের লেখক শনাক্ত হয়)
+    ========================= */
+
+    let authMod = null;
+
+    try {
+      authMod = await import("./auth.js");
+    } catch (e) {
+      console.error("auth module load failed:", e);
+    }
+
+
+    let user = authMod ? authMod.currentUser() : null;
+
+
+    if (!user) {
+
+      const ok =
+        await confirmLoginRequired(authMod);
+
+      if (!ok) {
+        return;
+      }
+
+      user = authMod.currentUser();
+
+      if (!user) {
+        return;
+      }
+    }
+
+
     const result =
       await openPostEditor(null);
 
@@ -71,6 +106,7 @@
 
     /* =========================
        SAVE TO FIREBASE
+       (authorUid সহ — notification-এর জন্য)
     ========================= */
 
     try {
@@ -82,6 +118,9 @@
           content: result.content,
           category: result.category,
           status: "pending",
+          authorUid: user.uid,
+          authorName: user.displayName || "",
+          authorEmail: user.email || "",
           createdAt: serverTimestamp()
         }
       );
@@ -90,7 +129,8 @@
       alert(
         "✅ পোস্ট জমা হয়েছে!\n\n" +
         "পোস্টটি এখন Pending অবস্থায় আছে।\n\n" +
-        "Admin Publish করার পর এটি ওয়েবসাইটে দেখা যাবে।"
+        "Admin Publish করার পর এটি ওয়েবসাইটে দেখা যাবে।\n\n" +
+        "✅/❌ status আপনার Notification-এ পৌঁছাবে।"
       );
 
 
@@ -106,6 +146,120 @@
     }
 
   });
+
+
+  /* =========================
+     LOGIN REQUIRED MODAL
+     (পোস্ট জমা দিতে Google Login)
+  ========================= */
+
+  function confirmLoginRequired(authMod) {
+
+    return new Promise((resolve) => {
+
+      if (!authMod) {
+        alert("❌ System load করা যায়নি। আবার চেষ্টা করুন।");
+        resolve(false);
+        return;
+      }
+
+      const overlay =
+        document.createElement("div");
+
+      overlay.style.cssText = `
+        position:fixed;
+        inset:0;
+        z-index:99998;
+        background:rgba(0,0,0,.75);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:20px;
+      `;
+
+      overlay.innerHTML = `
+        <div style="
+          width:100%;
+          max-width:420px;
+          background:#1e293b;
+          padding:25px;
+          border-radius:18px;
+          box-shadow:0 10px 40px rgba(0,0,0,.5);
+          text-align:center;
+        ">
+          <div style="font-size:40px; margin-bottom:10px;">✍️</div>
+          <h3 style="color:#38bdf8; margin:0 0 10px; font-size:18px;">
+            পোস্ট জমা দিতে Login করুন
+          </h3>
+          <p style="color:#cbd5e1; font-size:14px; line-height:1.7; margin-bottom:18px;">
+            আপনার লেখা আপনার Account-এর নামে যুক্ত হবে।
+            Admin Accept/Reject করলে Notification পাবেন।
+          </p>
+          <button id="loginReqBtn" style="
+            width:100%;
+            padding:13px;
+            border:none;
+            border-radius:10px;
+            background:white;
+            color:#0f172a;
+            font-size:15px;
+            font-weight:bold;
+            cursor:pointer;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            gap:10px;
+          ">
+            <span style="
+              width:22px;height:22px;border-radius:50%;
+              background:#4285F4;color:white;
+              display:inline-flex;align-items:center;justify-content:center;
+              font-size:14px;font-weight:bold;
+            ">G</span>
+            Google দিয়ে লগইন করুন
+          </button>
+          <button id="loginReqCancel" style="
+            width:100%;
+            margin-top:10px;
+            padding:12px;
+            border:none;
+            border-radius:10px;
+            background:#334155;
+            color:#e2e8f0;
+            font-size:14px;
+            cursor:pointer;
+          ">
+            পরে করবো
+          </button>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+
+      overlay
+        .querySelector("#loginReqBtn")
+        .addEventListener("click", async () => {
+          try {
+            await authMod.googleSignIn();
+            overlay.remove();
+            resolve(true);
+          } catch (err) {
+            console.error(err);
+            overlay.querySelector("#loginReqBtn").lastChild.textContent =
+              " Google দিয়ে লগইন করুন (আবার চেষ্টা)";
+          }
+        });
+
+      overlay
+        .querySelector("#loginReqCancel")
+        .addEventListener("click", () => {
+          overlay.remove();
+          resolve(false);
+        });
+
+    });
+
+  }
 
 
   /* =========================
@@ -969,13 +1123,22 @@
           card.innerHTML = `
 
             <h3 style="
-              margin-bottom:10px;
+              margin-bottom:6px;
             ">
               ${escapeHtml(
                 post.title ||
                 "Untitled"
               )}
             </h3>
+
+
+            <p style="
+              color:#64748b;
+              font-size:13px;
+              margin-bottom:10px;
+            ">
+              ✍️ লেখক: <strong>${escapeHtml(post.authorName || "Anonymous")}</strong>${post.authorEmail ? ` <span style="color:#475569;">(${escapeHtml(post.authorEmail)})</span>` : ""}
+            </p>
 
 
             <p style="
@@ -1042,6 +1205,21 @@
                 "
               >
                 ✅ Publish
+              </button>
+
+              <button
+                class="rejectBtn"
+                style="
+                  background:#f59e0b;
+                  color:white;
+                  border:none;
+                  padding:10px 16px;
+                  border-radius:8px;
+                  cursor:pointer;
+                  font-weight:bold;
+                "
+              >
+                🚫 Reject
               </button>
 
 
@@ -1171,6 +1349,68 @@
 
                   alert(
                     "❌ Publish করা যায়নি:\n\n" +
+                    error.message
+                  );
+
+                }
+
+              }
+            );
+
+
+          /* =========================
+             REJECT
+          ========================= */
+
+          card
+            .querySelector(
+              ".rejectBtn"
+            )
+            .addEventListener(
+              "click",
+              async () => {
+
+                if (
+                  !confirm(
+                    "এই পোস্টটি Reject করতে চান?"
+                  )
+                ) {
+                  return;
+                }
+
+
+                try {
+
+                  await updateDoc(
+                    doc(
+                      db,
+                      "Posts",
+                      postDoc.id
+                    ),
+                    {
+                      status:
+                        "rejected"
+                    }
+                  );
+
+
+                  alert(
+                    "🚫 পোস্ট Reject করা হয়েছে। লেখকের বিদ্যমান ফোনে/ডিভাইসে Push Notification পাঠানো হবে।"
+                  );
+
+
+                  loadPendingPosts();
+
+
+                } catch (error) {
+
+                  console.error(
+                    error
+                  );
+
+
+                  alert(
+                    "❌ Reject করা যায়নি:\n\n" +
                     error.message
                   );
 
@@ -1437,7 +1677,9 @@
                 ">
                   ${getCategoryName(
                     post.category
-                  )} • 📅 ${date}
+                  )} • 📅 ${date}${post.authorName
+                    ? ' • ✍️ ' + escapeHtml(post.authorName)
+                    : ''}
                 </div>
 
               </div>
