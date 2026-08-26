@@ -5,15 +5,15 @@
    - পরে থেকে লোড হলে ফায়ারবেস থেকে লাইভ পোস্ট আসে
    ============================================================ */
 
-const CACHE_NAME = "batighor-v1";
+const CACHE_NAME = "batighor-v2";
 
-/* সাইট চালানোর জন্য মৌলিক ফাইলগুলো */
+/* সাইট চালানোর জন্য মৌলিক ফাইলগুলো (version bump -> নতুন fetch) */
 const APP_SHELL = [
     "/",
     "index.html",
-    "style.css",
-    "main.js",
-    "admin.js",
+    "style.css?v=2",
+    "main.js?v=2",
+    "admin.js?v=2",
     "website-posts.js",
     "manifest.webmanifest",
     "favicon.svg",
