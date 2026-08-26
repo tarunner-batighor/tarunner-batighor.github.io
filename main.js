@@ -432,36 +432,35 @@
         if (btn) dockTip.style.display = "none";
     });
 
-    /* ＋ নতুন পোস্ট বাটন */
+    /* ＋ নতুন পোস্ট বাটন (উপরে বাম, About-এর ডান পাশে — 45px) */
     const addPostBtn = document.createElement('button');
     addPostBtn.id = "addPostBtn";
-    addPostBtn.className = "dock-btn";
-    addPostBtn.setAttribute("data-accent", "add");
-    addPostBtn.setAttribute("data-tip", "নতুন পোস্ট লিখুন");
+    addPostBtn.className = "corner-fab";
     addPostBtn.title = "নতুন পোস্ট লিখুন";
+    addPostBtn.setAttribute("aria-label", "নতুন পোস্ট লিখুন");
     addPostBtn.innerHTML = `
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
             <path d="M12 5v14M5 12h14"/>
         </svg>
     `;
-    dockMenu.appendChild(addPostBtn);
+    document.body.appendChild(addPostBtn);
 
     /* =========================
        সার্চ 🔍
     ========================= */
 
     const searchButton = document.createElement('button');
-    searchButton.className = "dock-btn";
-    searchButton.setAttribute("data-accent", "search");
-    searchButton.setAttribute("data-tip", "পোস্ট খুঁজুন");
+    searchButton.id = "searchFab";
+    searchButton.className = "corner-fab corner-fab-right";
     searchButton.title = "পোস্ট খুঁজুন";
+    searchButton.setAttribute("aria-label", "পোস্ট খুঁজুন");
     searchButton.innerHTML = `
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
             <circle cx="11" cy="11" r="7"/>
             <path d="M21 21l-4.35-4.35"/>
         </svg>
     `;
-    dockMenu.appendChild(searchButton);
+    document.body.appendChild(searchButton);
 
     let searchOverlay = null;
 
