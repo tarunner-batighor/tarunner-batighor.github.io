@@ -35,10 +35,14 @@ async function smokeTest(messaging) {
     });
     console.log("SMOKE: send ok (unexpected for dummy token)");
   } catch (e) {
-    const code = String((e.error && e.error.code) || e.message || "");
+    const code =
+      String((e.error && e.error.code) || "") + " " + String(e.message || "");
     console.log("SMOKE FCM responded:", code.slice(0, 200));
     if (
+      code.toLowerCase().includes("registration token") ||
       code.includes("invalid-registration-token") ||
+      code.includes("registration-token-not-registered") ||
+      code.includes("invalid-argument") ||
       code.includes("400")
     ) {
       console.log(
