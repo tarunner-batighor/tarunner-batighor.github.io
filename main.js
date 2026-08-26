@@ -613,13 +613,14 @@
 
     /* =========================
        অ্যাবাউট ℹ️
+       (বামদিকের উপরের কোণায় — স্ট্যান্ডার্ড পজিশন)
     ========================= */
 
     const aboutButton = document.createElement('button');
-    aboutButton.className = "dock-btn";
-    aboutButton.setAttribute("data-accent", "about");
-    aboutButton.setAttribute("data-tip", "আমাদের সম্পর্কে");
+    aboutButton.className = "about-fab";
+    aboutButton.id = "aboutFab";
     aboutButton.title = "আমাদের সম্পর্কে";
+    aboutButton.setAttribute("aria-label", "আমাদের সম্পর্কে");
     aboutButton.innerHTML = `
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
             <circle cx="12" cy="12" r="9"/>
@@ -627,7 +628,7 @@
             <path d="M12 7.5v.01"/>
         </svg>
     `;
-    dockMenu.appendChild(aboutButton);
+    document.body.appendChild(aboutButton);
 
     aboutButton.addEventListener('click', function() {
         const overlay = document.createElement('div');
