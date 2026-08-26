@@ -5,6 +5,10 @@ on:
     - cron: "*/5 * * * *"
   workflow_dispatch: {}
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   push:
     runs-on: ubuntu-latest
@@ -21,12 +25,59 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: FCM push
+        id: pusher
         working-directory: scripts
         run: |
           if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" ]; then
             echo "FIREBASE_SERVICE_ACCOUNT secret set kora hoynai — skip."
-            echo "GitHub repo: Settings → Secrets and variables → Actions"
             exit 0
           fi
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > ../service-account.json
-          GOOGLE_APPLICATION_CREDENTIALS=$GITHUB_WORKSPACE/service-account.json node fcm-pusher.js
+
+          # ---- JSON validate (key masked in report) ----
+          if ! node -e "
+            const fs = require('fs');
+            const raw = fs.readFileSync('../service-account.json', 'utf8');
+            const j = JSON.parse(raw);
+            if (!j.private_key || !j.project_id) throw new Error('private_key/project_id nei');
+            console.log('JSON OK — project:', j.project_id, ', client:', j.client_email);
+          " > /tmp/validate.log 2>&1; then
+            {
+              echo "## 🔧 Service account JSON problem"
+              echo ""
+              echo "\`\`\`"
+              cat /tmp/validate.log
+              echo ""
+              echo "--- file head (key masked) ---"
+              head -c 200 ../service-account.json | sed 's/"private_key":[[:space:]]*"[^"]*"/"private_key": "<hidden>"/'
+              echo ""
+              echo "file size: $(wc -c < ../service-account.json) bytes"
+              echo "\`\`\`"
+            } > /tmp/push-error.md
+            cat /tmp/push-error.md
+            exit 1
+          fi
+          cat /tmp/validate.log
+
+          # ---- run pusher ----
+          if ! GOOGLE_APPLICATION_CREDENTIALS=$GITHUB_WORKSPACE/service-account.json node fcm-pusher.js > /tmp/pusher.log 2>&1; then
+            {
+              echo "## 🔧 FCM pusher error"
+              echo ""
+              echo "\`\`\`"
+              tail -60 /tmp/pusher.log | sed 's/"private_key":[[:space:]]*"[^"]*"/"private_key": "<hidden>"/g'
+              echo "\`\`\`"
+            } > /tmp/push-error.md
+            cat /tmp/push-error.md
+            exit 1
+          fi
+          cat /tmp/pusher.log
+
+      - name: Report failure as issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "🔧 Push Notifier error (auto-report)" \
+            --body-file /tmp/push-error.md
