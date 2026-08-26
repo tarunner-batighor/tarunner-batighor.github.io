@@ -5,14 +5,14 @@
    - পরে থেকে লোড হলে ফায়ারবেস থেকে লাইভ পোস্ট আসে
    ============================================================ */
 
-const CACHE_NAME = "batighor-v6";
+const CACHE_NAME = "batighor-v7";
 
 /* সাইট চালানোর জন্য মৌলিক ফাইলগুলো (version bump -> নতুন fetch) */
 const APP_SHELL = [
     "/",
     "index.html",
-    "style.css?v=6",
-    "main.js?v=5",
+    "style.css?v=7",
+    "main.js?v=7",
     "admin.js?v=2",
     "website-posts.js",
     "manifest.webmanifest",
@@ -23,13 +23,22 @@ const APP_SHELL = [
     "icons/apple-touch-icon.png"
 ];
 
-/* ---- Install: শেল ফাইলগুলো cache-এ রাখি ---- */
+/* ---- Install: শেল ফাইলগুলো cache-এ রাখি ----
+   Auto-skipWaiting না করা — নতুন version "waiting" অবস্থায় থাকবে।
+   User "Update করুন" চাপলেই activate, নাহলে app বন্ধ করলে
+   পরের launch-এ নিজে থেকেই activate হবে। */
 self.addEventListener("install", function (event) {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(function (cache) { return cache.addAll(APP_SHELL); })
-            .then(function () { return self.skipWaiting(); })
     );
+});
+
+/* ---- "Update করুন" বাটনের signal ---- */
+self.addEventListener("message", function (event) {
+    if (event.data && event.data.type === "SKIP_WAITING") {
+        self.skipWaiting();
+    }
 });
 
 /* ---- Activate: পুরনো version-এর cache মুছে ফেলি ---- */
@@ -147,3 +156,4 @@ self.addEventListener("fetch", function (event) {
 
     /* বাকি সব (Firebase API ইত্যাদি) → সরাসরি network */
 });
+

@@ -41,7 +41,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Noto+Serif+Bengali:wght@400;600;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="style.css?v=7">
 
 </head>  
 <body>  
@@ -118,18 +118,9 @@
     <div id="dynamicContent"></div>  
 </div>  
 
-<script src="main.js?v=5"></script>
+<script src="main.js?v=7"></script>
   <script type="module" src="admin.js?v=2"></script>
 
-  <!-- PWA: Service Worker register -->
-  <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", function () {
-        navigator.serviceWorker.register("service-worker.js").catch(function (err) {
-          console.error("SW register failed:", err);
-        });
-      });
-    }
-  </script>
+  <!-- PWA: Service Worker register + update notification -> main.js -->
 </body>
 </html>

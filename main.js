@@ -789,3 +789,98 @@
     applyTheme(document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark");
 
     dockMenu.appendChild(themeToggleBtn);
+
+    /* =========================
+       PWA: নতুন আপডেট নোটিফিকেশন
+       (নতুন version ready হলে সুন্দর banner
+        + "Update করুন" বাটন)
+    ========================= */
+
+    (function () {
+        if (!("serviceWorker" in navigator)) return;
+
+        var reg = null;
+        var bannerEl = null;
+        var firstControl = !navigator.serviceWorker.controller; /* প্রথম install রিলাড রোধ */
+
+        function updateDismissedRecently() {
+            try {
+                var t = parseInt(sessionStorage.getItem("batighor-upd-dismiss") || "0", 10);
+                return Date.now() - t < 12 * 3600 * 1000; /* ১২ ঘণ্টা */
+            } catch (e) { return false; }
+        }
+
+        function hideBanner() {
+            if (!bannerEl) return;
+            bannerEl.classList.remove("show");
+            var el = bannerEl;
+            bannerEl = null;
+            setTimeout(function () { el.remove(); }, 320);
+        }
+
+        function showBanner() {
+            if (bannerEl || updateDismissedRecently()) return;
+            bannerEl = document.createElement("div");
+            bannerEl.className = "update-banner";
+            bannerEl.setAttribute("role", "status");
+            bannerEl.innerHTML =
+                '<div class="upd-icon">\u{1F504}</div>' +
+                '<div class="upd-text">' +
+                    "<strong>নতুন আপডেট পাওয়া গেছে</strong>" +
+                    "<span>সর্বশেষ Version চালু করতে Update করুন</span>" +
+                "</div>" +
+                '<div class="upd-actions">' +
+                    '<button type="button" class="upd-btn upd-now" id="updNowBtn">Update করুন</button>' +
+                    '<button type="button" class="upd-btn upd-later" id="updLaterBtn">পরে</button>' +
+                "</div>";
+            document.body.appendChild(bannerEl);
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    if (bannerEl) bannerEl.classList.add("show");
+                });
+            });
+
+            document.getElementById("updNowBtn").addEventListener("click", function () {
+                var btn = document.getElementById("updNowBtn");
+                btn.textContent = "আপডেট হচ্ছে...";
+                btn.disabled = true;
+                if (reg && reg.waiting) {
+                    reg.waiting.postMessage({ type: "SKIP_WAITING" });
+                } else {
+                    window.location.reload();
+                }
+            });
+
+            document.getElementById("updLaterBtn").addEventListener("click", function () {
+                try { sessionStorage.setItem("batighor-upd-dismiss", String(Date.now())); } catch (e) {}
+                hideBanner();
+            });
+        }
+
+        /* নতুন SW control পেলো -> banner বন্ধ + একবার reload (প্রথম install ছাড়া) */
+        navigator.serviceWorker.addEventListener("controllerchange", function () {
+            if (firstControl) { firstControl = false; return; }
+            hideBanner();
+            window.location.reload();
+        });
+
+        navigator.serviceWorker.register("service-worker.js").then(function (registration) {
+            reg = registration;
+
+            /* পেজ লোডেই waiting version থাকলে */
+            if (reg.waiting) showBanner();
+
+            /* নতুন version install হলে */
+            reg.addEventListener("updatefound", function () {
+                var newWorker = reg.installing;
+                if (!newWorker) return;
+                newWorker.addEventListener("statechange", function () {
+                    if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+                        showBanner();
+                    }
+                });
+            });
+        }).catch(function (err) {
+            console.error("SW register failed:", err);
+        });
+    })();
