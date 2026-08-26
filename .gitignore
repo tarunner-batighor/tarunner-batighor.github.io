@@ -8,3 +8,6 @@ functions/*.log
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+
+# service account (local only — NEVER commit)
+service-account.json

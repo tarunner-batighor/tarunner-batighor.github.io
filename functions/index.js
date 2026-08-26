@@ -1,18 +1,17 @@
 /**
  * ============================================================
- *  তারুণ্যের বাতিঘর — Cloud Functions
+ *  তারুণ্যের বাতিঘর — Cloud Function (Blaze upgrade path)
  * ============================================================
- *  কাজ:
- *  Admin কোনো পোস্টের status বদলালে (published / rejected):
- *   1. লেখকের users/{uid}/notifications-এ notification লেখে
- *      (সাইটের ভিতরের Bell-এ দেখা যায়)
- *   2. FCM Web Push পাঠায় লেখকের সব device/browser-এ
- *      (site বন্ধ থাকা অবস্থায়ও ফোনে আসে)
+ *  এই function টা এখনো deploy করা হয়নি (Spark plan-এ চলে না)।
+ *  বর্তমানে push পাঠাচ্ছে GitHub Actions (scripts/fcm-pusher.js)।
  *
- *  Deploy:
- *   npm install -g firebase-tools
- *   firebase login
- *   firebase deploy        (repo root থেকে)
+ *  ভবিষ্যতে Blaze plan নিলে শুধু:
+ *     firebase deploy --only functions
+ *  করলেই push INSTANT হবে (5 মিনিটের delay সবার আগে চলে যাবে)।
+ *
+ *  নোট: in-site notification লেখে ADMIN PANEL (client-side) —
+ *  তাই এই function শুধু push পাঠায় + pushedAt mark করে,
+ *  notification দ্বিতীয়বার লেখে না (duplicate এড়ানোর জন্য)।
  * ============================================================
  */
 
@@ -23,9 +22,16 @@ admin.initializeApp();
 
 const SITE_URL = "https://tarunner-batighor.github.io";
 
-/* ============================================================
-   Posts/{postId} status পরিবর্তন হলে trigger
-   ============================================================ */
+const INVALID_TOKEN_ERRORS = new Set([
+  "messaging/invalid-registration-token",
+  "messaging/registration-token-not-registered",
+  "messaging/registration-token-holds-too-many-apps"
+]);
+
+async function sleep(ms) {
+    return new Promise(function (res) { setTimeout(res, ms); });
+}
+
 exports.onPostStatusChange = functions.firestore
     .document("Posts/{postId}")
     .onUpdate(async (change, context) => {
@@ -34,7 +40,6 @@ exports.onPostStatusChange = functions.firestore
         const after = change.after.data();
         const postId = context.params.postId;
 
-        /* authorUid না থাকলে (পুরনো পোস্ট) বা status বদলায় না হলে ignore */
         if (!after.authorUid) return null;
         if ((before.status || "") === (after.status || "")) return null;
 
@@ -47,109 +52,80 @@ exports.onPostStatusChange = functions.firestore
         } else if (to === "rejected" && from !== "rejected") {
             type = "rejected";
         }
-
         if (!type) return null;
 
         const uid = after.authorUid;
-        const postTitle = after.title || "";
+        const db = admin.firestore();
+        const userCol = db.collection("users").doc(uid);
 
-        /* ---- বার্তা (spec অনুযায়ী) ---- */
-        const message = type === "approved"
-            ? "আপনার পোস্টটি অনুমোদিত হয়েছে এবং এখন ওয়েবসাইটে প্রকাশিত হয়েছে।"
-            : "দুঃখিত, আপনার পোস্টটি অনুমোদিত হয়নি।";
+        /* ---- client-এর লেখা notification খুঁজে নাও (একবার retry) ---- */
+        let matching = [];
+        for (let attempt = 0; attempt < 2; attempt++) {
+            const snap = await userCol
+                .collection("notifications")
+                .where("pushedAt", "==", null)
+                .get();
+            matching = snap.docs.filter(function (d) {
+                return d.data().postId === postId;
+            });
+            if (matching.length > 0) break;
+            await sleep(3000);
+        }
 
+        if (matching.length === 0) {
+            /* notification এখনো লেখা হয়নি — GitHub Actions-এর cron
+               নিজেই 5 মিনিটের মধ্যে push করে দেবে */
+            return { type: type, deferred: true };
+        }
+
+        const n = matching[0].data();
+        const message = n.message || "";
         const pushTitle = type === "approved"
             ? "✅ পোস্ট অনুমোদিত হয়েছে"
             : "❌ পোস্ট অনুমোদিত হয়নি";
-
         const targetUrl = SITE_URL + "/#post/" + postId;
 
-        const db = admin.firestore();
-        const userRef = db.collection("users").doc(uid);
+        /* ---- FCM Web Push ---- */
+        const tSnap = await userCol.collection("pushTokens").get();
+        const tokens = tSnap.docs.map(function (d) { return d.id; });
 
-        /* ============================================================
-           1) In-site notification
-              (users/{uid}/notifications — Bell-এ দেখা যাবে)
-           ============================================================ */
-        await userRef.collection("notifications").add({
-            type: type,
-            postId: postId,
-            postTitle: postTitle,
-            message: message,
-            read: false,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        let ok = 0;
+        if (tokens.length > 0) {
+            const results = await admin.messaging().sendEachForMulticast({
+                tokens: tokens,
+                notification: { title: pushTitle, body: message },
+                data: {
+                    title: pushTitle,
+                    body: message,
+                    type: type,
+                    postId: postId,
+                    url: targetUrl
+                }
+            });
+            ok = results.successCount;
 
-        /* ============================================================
-           2) FCM Web Push
-              (users/{uid}/pushTokens — প্রতিটি device/browser-এ)
-           ============================================================ */
-        const tokensSnap = await userRef
-            .collection("pushTokens")
-            .get();
-
-        const tokens = [];
-        tokensSnap.forEach(function (d) {
-            tokens.push(d.id);
-        });
-
-        if (tokens.length === 0) {
-            return { type: type, pushSent: false, reason: "no_tokens" };
-        }
-
-        /* token invalid হলে FCM যে error code দেয় (তখন token মুছে ফেলা হয়) */
-        const invalidTokenErrors = new Set([
-            "messaging/invalid-registration-token",
-            "messaging/registration-token-not-registered",
-            "messaging/registration-token-holds-too-many-apps"
-        ]);
-
-        /* notification + data দুই-তেই title/body রাখি:
-           - site বন্ধ → browser নিজেই notification ফিল্ড থেকে দেখায়
-           - site background-এ খোলা → SW push handler data থেকে দেখায় */
-        const results = await admin.messaging().sendEachForMulticast({
-            tokens: tokens,
-            notification: {
-                title: pushTitle,
-                body: message
-            },
-            data: {
-                title: pushTitle,
-                body: message,
-                type: type,
-                postId: postId,
-                url: targetUrl
-            }
-        });
-
-        /* ---- Invalid token গুলো সাইট থেকে মুছে ফেলি ---- */
-        const batch = db.batch();
-        let failed = 0;
-        let removed = 0;
-
-        for (const r of results.responses) {
-            if (r.success) continue;
-            failed++;
-            const code = r.error && r.error.code;
-            if (code && invalidTokenErrors.has(code)) {
-                const idx = (r.index !== undefined) ? r.index : r.indexToOriginalMessage;
-                if (idx !== undefined && idx < tokens.length) {
-                    batch.delete(userRef.collection("pushTokens").doc(tokens[idx]));
-                    removed++;
+            const batch = db.batch();
+            for (const r of results.responses) {
+                if (!r.success && r.error && INVALID_TOKEN_ERRORS.has(r.error.code)) {
+                    const idx = r.index !== undefined ? r.index : r.indexToOriginalMessage;
+                    if (idx !== undefined && idx < tokens.length) {
+                        batch.delete(userCol.collection("pushTokens").doc(tokens[idx]));
+                    }
                 }
             }
-        }
-
-        if (removed > 0) {
             await batch.commit();
         }
 
-        return {
-            type: type,
-            pushSent: results.successCount > 0,
-            totalTokens: tokens.length,
-            successCount: results.successCount,
-            failedCount: failed,
-            tokensRemoved: removed
-        };
+        /* ---- pushedAt mark (cron আবার push করবে না) ---- */
+        for (const doc of matching) {
+            await doc.ref.set(
+                {
+                    pushedAt: new Date().toISOString(),
+                    pushSuccessCount: ok
+                },
+                { merge: true }
+            );
+        }
+
+        return { type: type, pushSent: ok > 0, sent: ok, tokens: tokens.length };
     });

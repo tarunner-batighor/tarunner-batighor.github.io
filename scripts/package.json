@@ -1,0 +1,9 @@
+{
+  "name": "batighor-pusher",
+  "description": "তারুণ্যের বাতিঘর — FCM Web Push sender (GitHub Actions)",
+  "private": true,
+  "main": "fcm-pusher.js",
+  "dependencies": {
+    "firebase-admin": "^12.1.0"
+  }
+}

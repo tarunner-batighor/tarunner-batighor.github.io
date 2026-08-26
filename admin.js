@@ -1332,6 +1332,44 @@
                   );
 
 
+                  if (post.authorUid) {
+
+                    /* in-site notification - লেখকের Bell-এ যায়
+                       (phone push: Cloud Function / cron) */
+
+                    try {
+
+                      await addDoc(
+                        collection(
+                          db,
+                          "users",
+                          post.authorUid,
+                          "notifications"
+                        ),
+                        {
+                          type: "approved",
+                          postId: postDoc.id,
+                          postTitle: post.title || "",
+                          message: "আপনার পোস্টটি অনুমোদিত হয়েছে এবং এখন ওয়েবসাইটে প্রকাশিত হয়েছে।",
+                          read: false,
+                          pushedAt: null,
+                          createdAt: serverTimestamp()
+                        }
+                      );
+
+                    } catch (e) {
+
+                      console.error(
+                        "Notification write failed:",
+                        e
+                      );
+
+                    }
+
+                  }
+
+
+
                   alert(
                     "✅ পোস্ট Published হয়েছে!"
                   );
@@ -1392,6 +1430,44 @@
                         "rejected"
                     }
                   );
+
+
+                  if (post.authorUid) {
+
+                    /* in-site notification - লেখকের Bell-এ যায়
+                       (phone push: Cloud Function / cron) */
+
+                    try {
+
+                      await addDoc(
+                        collection(
+                          db,
+                          "users",
+                          post.authorUid,
+                          "notifications"
+                        ),
+                        {
+                          type: "rejected",
+                          postId: postDoc.id,
+                          postTitle: post.title || "",
+                          message: "দুঃখিত, আপনার পোস্টটি অনুমোদিত হয়নি।",
+                          read: false,
+                          pushedAt: null,
+                          createdAt: serverTimestamp()
+                        }
+                      );
+
+                    } catch (e) {
+
+                      console.error(
+                        "Notification write failed:",
+                        e
+                      );
+
+                    }
+
+                  }
+
 
 
                   alert(

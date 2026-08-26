@@ -13,7 +13,7 @@ const APP_SHELL = [
     "index.html",
     "style.css?v=8",
     "main.js?v=8",
-    "admin.js?v=3",
+    "admin.js?v=4",
     "website-posts.js",
     "manifest.webmanifest",
     "favicon.svg",

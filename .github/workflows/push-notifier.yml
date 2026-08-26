@@ -1,0 +1,32 @@
+name: Push Notifier
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        working-directory: scripts
+        run: npm install --no-audit --no-fund
+
+      - name: FCM push
+        working-directory: scripts
+        run: |
+          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" ]; then
+            echo "FIREBASE_SERVICE_ACCOUNT secret set kora hoynai — skip."
+            echo "GitHub repo: Settings → Secrets and variables → Actions"
+            exit 0
+          fi
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > ../service-account.json
+          GOOGLE_APPLICATION_CREDENTIALS=$GITHUB_WORKSPACE/service-account.json node fcm-pusher.js

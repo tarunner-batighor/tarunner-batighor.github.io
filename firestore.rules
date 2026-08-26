@@ -75,7 +75,8 @@ service cloud.firestore {
       match /notifications/{notifId} {
         allow get, list, update: if isSignedIn() && request.auth.uid == uid;
         allow delete: if false;
-        allow create: if false;
+        /* create: Admin panel (client) + Cloud Function (service account) */
+        allow create: if isAdmin();
       }
 
       // Push token:
