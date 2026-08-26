@@ -1,0 +1,15 @@
+{
+  "indexes": [],
+  "collectionGroups": [
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "pushedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ]
+}
