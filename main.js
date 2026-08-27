@@ -1047,7 +1047,8 @@
                         alert(
                           "❌ লগইন ব্যর্থ: " +
                           (err.code || err.message || "unknown") +
-                          "\n\nআবার চেষ্টা করুন।"
+                          "\n" +
+                          (m.authModule.loginErrHint ? m.authModule.loginErrHint(err) : "\nআবার চেষ্টা করুন।")
                         );
                     });
             });
@@ -1188,7 +1189,8 @@
                         p.style.cssText = "color:#f87171;font-size:13px;margin-top:10px;";
                         p.textContent =
               "❌ লগইন ব্যর্থ: " + (err.code || err.message || "unknown") +
-              "\nআবার চেষ্টা করুন।";
+              "\n" +
+              (m.authModule.loginErrHint ? m.authModule.loginErrHint(err) : "আবার চেষ্টা করুন।");
                         card.appendChild(p);
                     });
             });

@@ -115,4 +115,23 @@ export function onAuthChange(cb) {
   return function () { state.listeners.delete(cb); };
 }
 
+/* Login error hint (Bengali): err.code -> user-friendly message */
+const LOGIN_ERR_HINTS = {
+  "auth/unauthorized-domain": "এই ডোমেইনটি Firebase-এ authorized নয় - অ্যাডমিনকে জানান।",
+  "auth/operation-not-allowed": "এই Firebase project-এ Google Sign-In চালু নেই - অ্যাডমিনকে জানান।",
+  "auth/popup-blocked": "ব্রাউজার popup ব্লক করেছে - ব্রাউজার settings-এ popup allow করুন।",
+  "auth/cancelled-popup-request": "Login window বন্ধ হয়ে গেছে - আবার চেষ্টা করুন।",
+  "auth/timeout": "Login-এর সময় শেষ - আবার চেষ্টা করুন।",
+  "auth/network-request-failed": "ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।",
+  "auth/too-many-requests": "অনেকবার চেষ্টা হয়েছে - ৫ মিনিট পর আবার চেষ্টা করুন।",
+  "auth/account-exists-with-different-credential": "এই Google account আগে অন্যভাবে use হয়েছে।",
+  "auth/invalid-credential": "ভুল তথ্য দেওয়া হয়েছে - আবার চেষ্টা করুন।",
+  "auth/invalid-api-key": "Firebase config-এ সমস্যা - অ্যাডমিনকে জানান।"
+};
+
+export function loginErrHint(err) {
+  const code = (err && err.code) || "";
+  return LOGIN_ERR_HINTS[code] || "আবার চেষ্টা করুন।";
+}
+
 export { auth, db };

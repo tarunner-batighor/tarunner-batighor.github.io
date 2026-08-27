@@ -250,7 +250,8 @@
             alert(
               "❌ লগইন ব্যর্থ: " +
               (err.code || err.message || "unknown") +
-              "\n\nআবার চেষ্টা করুন।"
+              "\n" +
+              (authMod.loginErrHint ? authMod.loginErrHint(err) : "\nআবার চেষ্টা করুন।")
             );
           }
         });
