@@ -295,6 +295,30 @@
                 }
             });
 
+            /* ---- Reaction / Comment / View Count ---- */
+            currentEngagement = null;
+            const engWrap = document.createElement("div");
+            engWrap.className = "eng-wrap";
+            const engCard = dynamicContent.querySelector(".post-card");
+            if (engCard) {
+                engCard.insertAdjacentElement("afterend", engWrap);
+                (async function () {
+                    try {
+                        const mm = await loadModules();
+                        const eng = await import("./engage.js");
+                        currentEngagement = eng.renderEngagement(engWrap, post, {
+                            db: mm.authModule.db,
+                            user: authStateUser,
+                            getAuth: function () { return authStateUser; },
+                            signIn: function () { return mm.authModule.googleSignIn(); }
+                        });
+                    } catch (e) {
+                        console.error("Engagement load failed:", e);
+                        engWrap.innerHTML = "";
+                    }
+                })();
+            }
+
         } catch (error) {
             console.error("Post detail error:", error);
             dynamicContent.innerHTML = `
@@ -898,6 +922,8 @@
     let authStateUser = null;
     let notifUnsubscribe = null;
 
+    let currentEngagement = null;
+
     async function loadModules() {
         if (!authModule) authModule = await import("./auth.js");
         if (!notifModule) notifModule = await import("./notifications.js");
@@ -1332,6 +1358,11 @@
         m.authModule.onAuthChange(function (user) {
             authStateUser = user;
             updateProfileBtnIcon(user);
+
+            /* Post-engagement UI live refresh (login/logout change) */
+            if (currentView === "post" && currentEngagement) {
+                try { currentEngagement.refresh(); } catch (e) {}
+            }
 
             /* পুরনো subscription বন্ধ */
             if (notifUnsubscribe) {

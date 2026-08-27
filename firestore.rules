@@ -1,14 +1,13 @@
 rules_version = '2';
 
 // ============================================================
-//  তারুণ্যের বাতিঘর — Firestore Security Rules (v2 — User System)
-//  Deploy: firebase deploy (firebase.json-এ rules path configured)
-//
-//  নতুন ফিচার:
-//  - Users (Google Login) কেউই শুধু নিজের data দেখতে পারবে
-//  - প্রতিটি নতুন পোস্টে authorUid থাকবে (নিজের uid)
-//  - Notification শুধু Cloud Function লিখতে পারবে
-//  - Push token শুধু মালিক নিজের manage করতে পারবে
+//  তারুণ্যের বাতিঘর — Firestore Security Rules (v3 — Engagement)
+//  v2-এর ওপর নতুন:
+//  - Posts/{id}/reactions  — নিজের uid-তে নিজের reaction
+//  - Posts/{id}/comments   — login user, নিজের uid, ২-৫০০ অক্ষর
+//  - Posts/{id}.viewCount  — শুধু viewCount field increment (কেউই)
+//  বিদ্যমান সব rule (posts, users, notifications, pushQueue)
+//  অক্ষত — শুধু engagement-এর জন্য নতুন অংশ যোগ হয়েছে।
 // ============================================================
 
 service cloud.firestore {
@@ -25,6 +24,12 @@ service cloud.firestore {
     }
 
     match /Posts/{postId} {
+
+      /* শুধু published পোস্টের engagement public — pending/rejected
+         পোস্টের reaction/comment কেউ পড়তে পারবে না */
+      function parentIsPublished() {
+        return get(/databases/$(database)/documents/Posts/$(postId)).data.status == 'published';
+      }
 
       // পড়া (read):
       //   - সবাই শুধু 'published' পোস্ট পড়তে পারবে
@@ -52,9 +57,52 @@ service cloud.firestore {
         && request.resource.data.category.size() > 0
         && request.resource.data.category.size() <= 50;
 
-      // পোস্ট বদলানো বা মোছা (update/delete):
-      //   - শুধুমাত্র Admin পারবেন
-      allow update, delete: if isAdmin();
+      // পোস্ট বদলানো (update):
+      //   - Admin: যেকোনো field
+      //   - কেউই (login ছাড়াও): শুধু viewCount field —
+      //     বাকি field-এ হাত দিলে deny (view count guard)
+      allow update: if isAdmin()
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount']);
+
+      // মোছা (delete): শুধু Admin
+      allow delete: if isAdmin();
+
+      /* ---- Reaction:
+         - doc id = user-এর নিজের uid
+         - প্রতি user-এর প্রতি পোস্টে মাত্র ১টা reaction
+         - নিজের reaction create/update/delete; অন্যের নয় */
+      match /reactions/{uid} {
+        allow read: if parentIsPublished();
+        allow create, update: if isSignedIn()
+          && request.auth.uid == uid
+          && parentIsPublished()
+          && request.resource.data.emoji is string
+          && request.resource.data.emoji.size() > 0
+          && request.resource.data.emoji.size() <= 8;
+        allow delete: if isSignedIn()
+          && request.auth.uid == uid
+          && parentIsPublished();
+      }
+
+      /* ---- Comment:
+         - শুধু login করা user লিখতে পারবে
+         - authorUid অবশ্যই নিজের uid
+         - ২-৫০০ অক্ষর, authorName ১-৮০ অক্ষর
+         - update/delete: শুধু Admin (মডারেশন) */
+      match /comments/{cid} {
+        allow read: if parentIsPublished();
+        allow create: if isSignedIn()
+          && parentIsPublished()
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.authorName is string
+          && request.resource.data.authorName.size() > 0
+          && request.resource.data.authorName.size() <= 80
+          && request.resource.data.text is string
+          && request.resource.data.text.size() >= 2
+          && request.resource.data.text.size() <= 500;
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+      }
     }
 
     match /users/{uid} {
@@ -89,7 +137,7 @@ service cloud.firestore {
 
     /* Push Queue:
        - Admin accept/reject করলে এই queue-তে item আসে (client)
-       - পড়া/lিখা (push + cleanup) শুধু service account
+       - পড়া/লিখা (push + cleanup) শুধু service account
          (GitHub Actions / Cloud Function) করবে */
     match /pushQueue/{docId} {
       allow create: if isAdmin();
