@@ -1044,6 +1044,11 @@
                     })
                     .catch(function (err) {
                         console.error("Sign-in failed:", err);
+                        alert(
+                          "❌ লগইন ব্যর্থ: " +
+                          (err.code || err.message || "unknown") +
+                          "\n\nআবার চেষ্টা করুন।"
+                        );
                     });
             });
             return;
@@ -1181,7 +1186,9 @@
                         const card = profilePanel.overlay.querySelector(".pf-login-card");
                         const p = document.createElement("p");
                         p.style.cssText = "color:#f87171;font-size:13px;margin-top:10px;";
-                        p.textContent = "❌ লগইন ব্যর্থ: " + (err.message || "").split(" (")[0];
+                        p.textContent =
+              "❌ লগইন ব্যর্থ: " + (err.code || err.message || "unknown") +
+              "\nআবার চেষ্টা করুন।";
                         card.appendChild(p);
                     });
             });

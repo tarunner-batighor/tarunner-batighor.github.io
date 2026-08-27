@@ -11,6 +11,7 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -78,8 +79,27 @@ export function authReady() {
   return state.ready;
 }
 
+/* popup-এ সমস্যা হলে (mobile-এ ব্রিটিশ) redirect flow-এ চলে যায়
+   — redirect-ই mobile-এ সবচেয়ে reliable */
+const POPUP_FALLBACK_CODES = new Set([
+  "auth/popup-blocked",
+  "auth/cancelled-popup-request",
+  "auth/operation-not-supported-in-this-environment",
+  "auth/timeout",
+  "auth/internal-error",
+  "auth/network-request-failed"
+]);
+
 export function googleSignIn() {
-  return signInWithPopup(auth, googleProvider);
+  return signInWithPopup(auth, googleProvider).catch(function (err) {
+    if (err && err.code && POPUP_FALLBACK_CODES.has(err.code)) {
+      console.info(
+        "Popup failed (" + err.code + ") — redirect flow try korho..."
+      );
+      return signInWithRedirect(auth, googleProvider);
+    }
+    throw err;
+  });
 }
 
 export function logout() {

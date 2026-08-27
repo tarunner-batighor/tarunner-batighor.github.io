@@ -247,6 +247,11 @@
             console.error(err);
             overlay.querySelector("#loginReqBtn").lastChild.textContent =
               " Google দিয়ে লগইন করুন (আবার চেষ্টা)";
+            alert(
+              "❌ লগইন ব্যর্থ: " +
+              (err.code || err.message || "unknown") +
+              "\n\nআবার চেষ্টা করুন।"
+            );
           }
         });
 
