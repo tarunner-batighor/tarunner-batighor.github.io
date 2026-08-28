@@ -88,3 +88,66 @@
 - Service account key শুধু GitHub-এর **encrypted secret**-এ — কোডে, frontend-এ নাকি chat-এ কোথাও না
 - VAPID private key শুধু Firebase-এ — frontend-এ শুধু public key
 - প্রতিটি user শুধু নিজের data access করে (security rules)
+
+---
+
+# 🛡️ Moderator System (28 Aug 2026 — v4)
+
+এখন আর শুধু Admin-একাই পোস্ট মডারেট করবেন না — **একাধিক Moderator**
+যোগ করা যাবে।
+
+## Roles কেমন কাজ করে?
+
+| Role | কী করতে পারবে |
+|---|---|
+| **Admin** (আপনি) | সবকিছু: পোস্ট edit/publish/reject/delete, comment moderation, **moderator যোগ/বাতিল**, notification |
+| **Moderator** | পোস্ট **edit / publish / reject**, comment moderation, notification। **Delete (চিরতরে মুছা) আর moderator ম্যানেজমেন্ট পারবে না** |
+| **User** (Google login) | পোস্ট জমা (pending), reaction, comment |
+
+Role Firestore-এর `users/{uid}` doc-এর `role` field-এ থাকে।
+**Security:** কেউ নিজে নিজে `role` field বদলাতে বা যুক্ত করতে পারবে না
+(rules-এ block) — শুধু Admin Panel-এর Moderators tab থেকে বদলায়।
+
+## নতুন rules লাইভ করা (একবারই, ১ মিনিট)
+
+1. https://console.firebase.google.com/project/tarunner-batighor/firestore/rules খুলুন
+2. Rules editor-এর পুরনো rules **সব select করে delete**
+3. এই repo-র `firestore.rules` file-এর পুরো contents paste করুন
+4. **Publish** চাপুন
+
+> ⚠️ Publish-এর পরপরই নতুন নিয়ম সব device-এ enforce হবে।
+
+## Moderator যোগ করা (Admin login-এ)
+
+1. সাইট-এ 🔐 Admin Panel খুলুন (আপনার email+password দিয়ে login)
+2. **👥 Moderators** tab-এ যান
+3. "নতুন Moderator যোগ করুন" box-এ তার **email** লিখে 🔎 খুঁজুন
+   - ⚠️ ইউজারকে আগে সাইটে **Google দিয়ে একবার login** করতে হবে
+4. **✅ মোডারেটর বানান** button চাপুন
+
+## Moderator-এর পুরো flow
+
+1. Moderator সাইটে **Google login** করে (সাধারণ user-দের মতোই)
+2. 🔐 Admin Panel button-এ click করলেই — password লাগবে না —
+   **🛡️ Moderator Panel** খুলবে
+3. Pending পোস্ট-এ ✏️ Edit / ✅ Publish / 🚫 Reject — সব কাজ হবে
+4. Published পোস্ট-এর নিচে দেখা যাবে:
+   - `🛡️ [যে Moderation-এর হাত দিয়ে publish হয়েছে]`
+   - `✏️ [সর্বশেষ edit করেছে]`
+
+## নতুন ডেটা fields (স্বয়ংক্রিয়, কিছু করবেন না)
+
+| Field | কোথায় | কী মানে |
+|---|---|---|
+| `role` | `users/{uid}` | `"moderator"` (নেই = সাধারণ user) |
+| `moderatedBy` | `Posts/{id}` | কার নাম/email-এ publish/reject হলো |
+| `lastEditedBy` | `Posts/{id}` | সর্বশেষ edit-এর নাম |
+| `lastEditedAt` | `Posts/{id}` | edit-এর সময় |
+
+## Note
+
+- Moderator-এর access বাতিল করলে সে তার device-এ page **refresh**
+  করলেই panel বন্ধ হয়ে যাবে (role check প্রতি login-এ হয়)
+- `functions/index.js` (Cloud Function) এই feature-এর জন্য **বদলাতে হবে
+  না** — সেটা status change trigger-এ push পাঠায়, কীভাবে approval
+  হলো তাতে তার ধরবার কিছু নেই
