@@ -9,11 +9,13 @@
     addDoc,
     serverTimestamp,
     getDocs,
+    getDoc,
     query,
     where,
     updateDoc,
     deleteDoc,
-    doc
+    doc,
+    FieldValue
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   import {
@@ -49,6 +51,16 @@
 
   const ADMIN_EMAIL =
     "abdulhadibinmasud775@gmail.com";
+
+
+  /* =========================
+     ROLE STATE
+     "admin" | "moderator" | "none"
+     (users/{uid}.role field — শুধু Admin
+      Moderators tab-এর মাধ্যমে set করতে পারবে)
+  ========================= */
+
+  let currentRole = "none";
 
 
   /* =========================
@@ -544,8 +556,8 @@
 
   adminButton.className = "dock-btn";
   adminButton.setAttribute("data-accent", "admin");
-  adminButton.setAttribute("data-tip", "অ্যাডমিন প্যানেল");
-  adminButton.title = "অ্যাডমিন প্যানেল";
+  adminButton.setAttribute("data-tip", "অ্যাডমিন / মোডারেটর প্যানেল");
+  adminButton.title = "অ্যাডমিন / মোডারেটর প্যানেল";
   adminButton.innerHTML = `
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
       <rect x="4" y="11" width="16" height="9" rx="2"/>
@@ -593,7 +605,7 @@
         margin-bottom:25px;
       ">
 
-        <h2 style="
+        <h2 id="panelTitle" style="
           color:#38bdf8;
           margin:0;
         ">
@@ -771,6 +783,25 @@
             ✅ Published পোস্ট
           </button>
 
+
+          <button
+            id="tabModeratorsBtn"
+            style="
+              display:none;
+              flex:1;
+              padding:12px;
+              border:none;
+              border-radius:9px;
+              background:#334155;
+              color:white;
+              cursor:pointer;
+              font-weight:bold;
+              font-size:15px;
+            "
+          >
+            👥 Moderators
+          </button>
+
         </div>
 
 
@@ -781,6 +812,75 @@
 
         <div id="publishedPosts" style="display:none;">
           Loading...
+        </div>
+
+
+        <!-- MODERATORS (শুধু Admin দেখতে পাবে) -->
+
+        <div id="moderatorsSection" style="display:none;">
+
+          <div style="
+            background:#1e293b;
+            padding:18px;
+            border-radius:12px;
+            margin-bottom:15px;
+          ">
+
+            <h4 style="margin:0 0 8px 0;">
+              👤 নতুন Moderator যোগ করুন
+            </h4>
+
+            <p style="
+              color:#94a3b8;
+              font-size:13px;
+              line-height:1.6;
+              margin-bottom:12px;
+            ">
+              ইউজারের Email দিন। ইউজারকে আগে ওয়েবসাইটে
+              Google দিয়ে একবার Login করতে হবে।
+              <br><br>
+              Moderator: পোস্ট Edit / Publish / Reject করতে
+              পারবে। চিরতরে Delete শুধু Admin করতে পারবে।
+            </p>
+
+            <div style="display:flex; gap:8px;">
+              <input
+                id="modSearchEmail"
+                type="email"
+                placeholder="user@gmail.com"
+                style="
+                  flex:1;
+                  padding:11px;
+                  border-radius:8px;
+                  border:none;
+                  font-size:14px;
+                "
+              >
+              <button
+                id="modSearchBtn"
+                style="
+                  background:#38bdf8;
+                  color:#0f172a;
+                  border:none;
+                  padding:11px 16px;
+                  border-radius:8px;
+                  font-weight:bold;
+                  cursor:pointer;
+                "
+              >
+                🔎 খুঁজুন
+              </button>
+            </div>
+
+          </div>
+
+          <div id="modSearchResult"></div>
+
+          <h4 style="margin:15px 0 8px 0;">
+            🛡️ বর্তমান Moderator তালিকা
+          </h4>
+          <div id="modList">Loading...</div>
+
         </div>
 
       </div>
@@ -899,6 +999,15 @@
       }
     );
 
+  document
+    .getElementById("tabModeratorsBtn")
+    .addEventListener(
+      "click",
+      () => {
+        switchAdminTab("moderators");
+      }
+    );
+
 
   /* =========================
      ADMIN LOGIN
@@ -984,7 +1093,7 @@
 
   onAuthStateChanged(
     auth,
-    (user) => {
+    async (user) => {
 
       const loginBox =
         document.getElementById(
@@ -998,29 +1107,120 @@
         );
 
 
+      const loginMessage =
+        document.getElementById(
+          "loginMessage"
+        );
+
+
+      const panelTitle =
+        document.getElementById(
+          "panelTitle"
+        );
+
+
+      const modTab =
+        document.getElementById(
+          "tabModeratorsBtn"
+        );
+
+
+      if (!user) {
+
+        currentRole = "none";
+
+        loginBox.style.display = "block";
+        adminArea.style.display = "none";
+
+        if (loginMessage)
+          loginMessage.innerText = "";
+
+        return;
+
+      }
+
+
+      /* ---- Main Admin (email/password account) ---- */
+
       if (
-        user &&
         user.email &&
         user.email.toLowerCase() ===
         ADMIN_EMAIL.toLowerCase()
       ) {
 
-        loginBox.style.display =
-          "none";
+        currentRole = "admin";
 
-        adminArea.style.display =
-          "block";
+        loginBox.style.display = "none";
+        adminArea.style.display = "block";
+
+        if (panelTitle)
+          panelTitle.innerText = "🔐 Admin Panel";
+
+        if (modTab)
+          modTab.style.display = "block";
+
+        if (loginMessage)
+          loginMessage.innerText = "";
 
         switchAdminTab("pending");
 
-      } else {
+        return;
 
-        loginBox.style.display =
-          "block";
+      }
 
-        adminArea.style.display =
-          "none";
 
+      /* ---- Moderator check: users/{uid}.role ----
+         (role field শুধু Admin set করে,
+          নিজে নিজে বদলানো rules-এ ব্লক) */
+
+      try {
+
+        const snap =
+          await getDoc(
+            doc(db, "users", user.uid)
+          );
+
+
+        if (
+          snap.exists() &&
+          snap.data().role === "moderator"
+        ) {
+
+          currentRole = "moderator";
+
+          loginBox.style.display = "none";
+          adminArea.style.display = "block";
+
+          if (panelTitle)
+            panelTitle.innerText = "🛡️ Moderator Panel";
+
+          if (modTab)
+            modTab.style.display = "none";
+
+          if (loginMessage)
+            loginMessage.innerText = "";
+
+          switchAdminTab("pending");
+
+          return;
+
+        }
+
+      } catch (e) {
+        console.error("Role check failed:", e);
+      }
+
+
+      /* ---- Login আছে কিন্তু staff access নেই ---- */
+
+      currentRole = "none";
+
+      loginBox.style.display = "block";
+      adminArea.style.display = "none";
+
+      if (loginMessage) {
+        loginMessage.innerText =
+          "আপনি Login আছেন, কিন্তু Moderator access নেই।\nAdmin-কে জানানো দরকার।";
       }
 
     }
@@ -1238,6 +1438,7 @@
                   padding:10px 16px;
                   border-radius:8px;
                   cursor:pointer;
+                  display:${currentRole === "admin" ? "" : "none"};
                 "
               >
                 🗑 Delete
@@ -1271,6 +1472,10 @@
                 }
 
                 try {
+
+                  const staff =
+                    staffInfo();
+
                   await updateDoc(
                     doc(
                       db,
@@ -1280,7 +1485,10 @@
                     {
                       title: result.title,
                       content: result.content,
-                      category: result.category
+                      category: result.category,
+                      lastEditedBy: staff.name,
+                      lastEditedAt:
+                        serverTimestamp()
                     }
                   );
 
@@ -1325,6 +1533,9 @@
 
                 try {
 
+                  const staff =
+                    staffInfo();
+
                   await updateDoc(
                     doc(
                       db,
@@ -1333,7 +1544,12 @@
                     ),
                     {
                       status:
-                        "published"
+                        "published",
+                      moderatedBy: {
+                        name: staff.name,
+                        email: staff.email,
+                        at: serverTimestamp()
+                      }
                     }
                   );
 
@@ -1444,6 +1660,9 @@
 
                 try {
 
+                  const staff =
+                    staffInfo();
+
                   await updateDoc(
                     doc(
                       db,
@@ -1452,7 +1671,12 @@
                     ),
                     {
                       status:
-                        "rejected"
+                        "rejected",
+                      moderatedBy: {
+                        name: staff.name,
+                        email: staff.email,
+                        at: serverTimestamp()
+                      }
                     }
                   );
 
@@ -1799,6 +2023,10 @@
                     post.category
                   )} • 📅 ${date}${post.authorName
                     ? ' • ✍️ ' + escapeHtml(post.authorName)
+                    : ''}${post.moderatedBy
+                    ? ' • 🛡️ ' + escapeHtml(post.moderatedBy.name)
+                    : ''}${post.lastEditedBy
+                    ? ' • ✏️ ' + escapeHtml(post.lastEditedBy)
                     : ''}
                 </div>
 
@@ -1838,6 +2066,7 @@
                     cursor:pointer;
                     font-size:13px;
                     font-weight:bold;
+                    display:${currentRole === "admin" ? "" : "none"};
                   "
                 >
                   🗑 Delete
@@ -1928,6 +2157,10 @@
                 }
 
                 try {
+
+                  const staff =
+                    staffInfo();
+
                   await updateDoc(
                     doc(
                       db,
@@ -1937,7 +2170,10 @@
                     {
                       title: result.title,
                       content: result.content,
-                      category: result.category
+                      category: result.category,
+                      lastEditedBy: staff.name,
+                      lastEditedAt:
+                        serverTimestamp()
                     }
                   );
 
@@ -2043,6 +2279,460 @@
     }
 
   }
+
+
+  /* =========================
+     MODERATOR MANAGEMENT
+     (শুধু Admin — email দিয়ে search,
+      role set/remove)
+  ========================= */
+
+  function staffInfo() {
+
+    const user =
+      auth.currentUser;
+
+    return {
+      name:
+        (user && user.displayName) ||
+        (user && user.email) ||
+        "unknown",
+      email:
+        (user && user.email) || ""
+    };
+
+  }
+
+
+  async function loadModerators() {
+
+    const container =
+      document.getElementById(
+        "modList"
+      );
+
+    container.innerHTML =
+      "<p>খোঁজা হচ্ছে...</p>";
+
+    try {
+
+      const snap =
+        await getDocs(
+          query(
+            collection(
+              db,
+              "users"
+            ),
+            where(
+              "role",
+              "==",
+              "moderator"
+            )
+          )
+        );
+
+
+      if (snap.empty) {
+
+        container.innerHTML = `
+          <div style="
+            background:#1e293b;
+            padding:16px;
+            border-radius:12px;
+            text-align:center;
+            color:#94a3b8;
+          ">
+            এখনো কোনো Moderator নেই।
+          </div>
+        `;
+
+        return;
+
+      }
+
+
+      container.innerHTML = "";
+
+
+      snap.forEach(
+        (uDoc) => {
+
+          const u =
+            uDoc.data();
+
+          const row =
+            document.createElement(
+              "div"
+            );
+
+          row.style.cssText = `
+            background:#1e293b;
+            border:1px solid #334155;
+            border-radius:10px;
+            padding:12px 14px;
+            margin-bottom:10px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:10px;
+            flex-wrap:wrap;
+          `;
+
+          row.innerHTML = `
+            <div>
+              <div style="
+                color:white;
+                font-weight:bold;
+              ">
+                ${escapeHtml(
+                  u.name ||
+                  "User"
+                )}
+              </div>
+              <div style="
+                color:#94a3b8;
+                font-size:12.5px;
+                margin-top:2px;
+              ">
+                ${escapeHtml(
+                  u.email || ""
+                )}
+              </div>
+            </div>
+            <button
+              class="removeModBtn"
+              style="
+                background:#ef4444;
+                color:white;
+                border:none;
+                padding:7px 12px;
+                border-radius:7px;
+                font-size:13px;
+                font-weight:bold;
+                cursor:pointer;
+              "
+            >
+              মোডারেটর বাতিল
+            </button>
+          `;
+
+          row
+            .querySelector(
+              ".removeModBtn"
+            )
+            .addEventListener(
+              "click",
+              async () => {
+
+                if (
+                  !confirm(
+                    "এই ইউজারের Moderator access বাতিল করবেন?"
+                  )
+                ) {
+                  return;
+                }
+
+                try {
+
+                  await updateDoc(
+                    doc(
+                      db,
+                      "users",
+                      uDoc.id
+                    ),
+                    {
+                      role:
+                        FieldValue.delete()
+                    }
+                  );
+
+                  alert(
+                    "✅ Moderator access বাতিল হয়েছে।"
+                  );
+
+                  loadModerators();
+
+                } catch (e) {
+                  console.error(e);
+                  alert(
+                    "❌ বাতিল করা যায়নি:\n\n" +
+                    e.message
+                  );
+                }
+
+              }
+            );
+
+          container.appendChild(
+            row
+          );
+
+        }
+      );
+
+    } catch (e) {
+
+      console.error(e);
+
+      container.innerHTML =
+        "❌ লোড করা যায়নি: " +
+        escapeHtml(e.message);
+
+    }
+
+  }
+
+
+  document
+    .getElementById(
+      "modSearchBtn"
+    )
+    .addEventListener(
+      "click",
+      async () => {
+
+        const email =
+          document
+            .getElementById(
+              "modSearchEmail"
+            )
+            .value
+            .trim()
+            .toLowerCase();
+
+        const box =
+          document.getElementById(
+            "modSearchResult"
+          );
+
+        if (!email) {
+          box.innerHTML =
+            '<p style="color:#f87171;">Email দিন।</p>';
+          return;
+        }
+
+        box.innerHTML =
+          "<p>খোঁজা হচ্ছে...</p>";
+
+        try {
+
+          const snap =
+            await getDocs(
+              query(
+                collection(
+                  db,
+                  "users"
+                ),
+                where(
+                  "email",
+                  "==",
+                  email
+                )
+              )
+            );
+
+
+          if (snap.empty) {
+
+            box.innerHTML = `
+              <div style="
+                background:#450a0a;
+                color:#fecaca;
+                padding:14px;
+                border-radius:10px;
+                font-size:14px;
+                line-height:1.6;
+                margin-bottom:15px;
+              ">
+                ❌ এই Email-এর কোনো ইউজার পাওয়া যায়নি।
+                <br><br>
+                ইউজারকে আগে ওয়েবসাইটে
+                <strong>Google দিয়ে একবার Login</strong>
+                করতে হবে — তারপর আবার খুঁজবেন।
+              </div>
+            `;
+
+            return;
+
+          }
+
+
+          box.innerHTML = "";
+
+
+          snap.forEach(
+            (uDoc) => {
+
+              const u =
+                uDoc.data();
+
+              const isMod =
+                u.role === "moderator";
+
+
+              if (
+                email ===
+                ADMIN_EMAIL.toLowerCase()
+              ) {
+
+                box.innerHTML = `
+                  <div style="
+                    background:#1e293b;
+                    padding:14px;
+                    border-radius:10px;
+                    color:#cbd5e1;
+                    font-size:14px;
+                    margin-bottom:15px;
+                  ">
+                    এটি মূল Admin account —
+                    Moderator access এর দরকার নেই।
+                  </div>
+                `;
+
+                return;
+
+              }
+
+
+              const item =
+                document.createElement(
+                  "div"
+                );
+
+              item.style.cssText = `
+                background:#1e293b;
+                border:1px solid #334155;
+                border-radius:10px;
+                padding:14px;
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                gap:10px;
+                flex-wrap:wrap;
+                margin-bottom:15px;
+              `;
+
+              item.innerHTML = `
+                <div>
+                  <div style="
+                    color:white;
+                    font-weight:bold;
+                  ">
+                    ${escapeHtml(
+                      u.name ||
+                      u.email ||
+                      "User"
+                    )}
+                  </div>
+                  <div style="
+                    color:#94a3b8;
+                    font-size:12.5px;
+                    margin-top:2px;
+                  ">
+                    ${escapeHtml(
+                      u.email || ""
+                    )}
+                    ${isMod ? ' • <span style="color:#34d399;">মোডারেটর</span>' : ""}
+                  </div>
+                </div>
+                <button
+                  id="modToggleBtn"
+                  style="
+                    background:${isMod ? "#ef4444" : "#10b981"};
+                    color:white;
+                    border:none;
+                    padding:9px 14px;
+                    border-radius:8px;
+                    font-size:13px;
+                    font-weight:bold;
+                    cursor:pointer;
+                  "
+                >
+                  ${isMod ? "🚫 মোডারেটর বাতিল" : "✅ মোডারেটর বানান"}
+                </button>
+              `;
+
+              item
+                .querySelector(
+                  "#modToggleBtn"
+                )
+                .addEventListener(
+                  "click",
+                  async () => {
+
+                    try {
+
+                      if (isMod) {
+
+                        await updateDoc(
+                          doc(
+                            db,
+                            "users",
+                            uDoc.id
+                          ),
+                          {
+                            role:
+                              FieldValue.delete()
+                          }
+                        );
+
+                        alert(
+                          "✅ Moderator access বাতিল হয়েছে।"
+                        );
+
+                      } else {
+
+                        await updateDoc(
+                          doc(
+                            db,
+                            "users",
+                            uDoc.id
+                          ),
+                          {
+                            role:
+                              "moderator"
+                          }
+                        );
+
+                        alert(
+                          "✅ মোডারেটর বানানো হয়েছে!\n\n" +
+                          "ইউজার Google Login করলেই তার Moderator Panel খুলবে।"
+                        );
+
+                      }
+
+                      loadModerators();
+
+                    } catch (e) {
+                      console.error(e);
+                      alert(
+                        "❌ কাজ করা যায়নি:\n\n" +
+                        e.message
+                      );
+                    }
+
+                  }
+                );
+
+              box.appendChild(
+                item
+              );
+
+            }
+          );
+
+        } catch (e) {
+
+          console.error(e);
+
+          box.innerHTML =
+            "❌ খোঁজা যায়নি: " +
+            escapeHtml(e.message);
+
+        }
+
+      }
+    );
 
 
   /* =========================
