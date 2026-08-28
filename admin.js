@@ -17,7 +17,8 @@
     limit,
     updateDoc,
     deleteDoc,
-    doc
+    doc,
+    onSnapshot
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   import {
@@ -63,6 +64,11 @@
   ========================= */
 
   let currentRole = "none";
+
+  /* Moderator role-এর live check subscription
+     (auth state বদলালে পুরনোটা বন্ধ হয়) */
+
+  let roleCheckUnsub = null;
 
 
   /* =========================
@@ -1350,6 +1356,15 @@
     auth,
     async (user) => {
 
+      /* আগের role-check subscription থাকলে বন্ধ */
+
+      if (roleCheckUnsub) {
+        try {
+          roleCheckUnsub();
+        } catch (e) {}
+        roleCheckUnsub = null;
+      }
+
       const loginBox =
         document.getElementById(
           "adminLoginBox"
@@ -1452,70 +1467,9 @@
 
 
       /* ---- Moderator check: users/{uid}.role ----
-         (role field শুধু Admin set করে,
-          নিজে নিজে বদলানো rules-এ ব্লক) */
-
-      let roleDebug = "";
-
-      try {
-
-        const snap =
-          await getDoc(
-            doc(db, "users", user.uid)
-          );
-
-
-        if (snap.exists()) {
-          const rd = snap.data();
-          roleDebug =
-            "role=" + (rd.role || "নেই") +
-            (rd.active === false ? " • নিষ্ক্রিয়" : "");
-        } else {
-          roleDebug = "user doc পাওয়া যায়নি";
-        }
-
-        if (
-          snap.exists() &&
-          snap.data().role === "moderator" &&
-          snap.data().active !== false
-        ) {
-
-          currentRole = "moderator";
-
-          loginBox.style.display = "none";
-          adminArea.style.display = "block";
-
-          if (panelTitle)
-            panelTitle.innerText = "🛡️ Moderator Panel";
-
-          if (modTab)
-            modTab.style.display = "none";
-
-          const histTabM =
-            document.getElementById(
-              "tabHistoryBtn"
-            );
-
-          if (histTabM)
-            histTabM.style.display = "block";
-
-          if (loginMessage)
-            loginMessage.innerText = "";
-
-          switchAdminTab("pending");
-
-          return;
-
-        }
-
-      } catch (e) {
-        console.error("Role check failed:", e);
-        roleDebug = "role check error: " +
-          String(e.message || e).slice(0, 80);
-      }
-
-
-      /* ---- Login আছে কিন্তু staff access নেই ---- */
+         LIVE check (onSnapshot) — Admin Panel-এ role add/hole
+         বা active/inactive বদলালেই status live update হয়,
+         refresh দরকার হয় না */
 
       currentRole = "none";
 
@@ -1524,12 +1478,108 @@
 
       if (loginMessage) {
         loginMessage.innerText =
-          "আপনি Login আছেন, কিন্তু Moderator access নেই।\n"          +
-          "Login email: " +
-          (user.email || "not found") +
-          "\n" +
-          roleDebug +
-          "\n\nAdmin-কে জানানো দরকার।";
+          "প্রোফাইল চেক হচ্ছে...";
+      }
+
+      try {
+
+        roleCheckUnsub = onSnapshot(
+          doc(db, "users", user.uid),
+          (snap) => {
+
+            /* logout/login switch হলে পুরনো callback
+               নতুন state-এ কাজ করবে না */
+
+            const cu =
+              auth.currentUser;
+
+            if (!cu || cu.uid !== user.uid) {
+              return;
+            }
+
+            const rd =
+              snap.exists() ? snap.data() : null;
+
+            const role =
+              rd ? rd.role : null;
+
+            const isActive =
+              rd ? rd.active !== false : false;
+
+            if (
+              role === "moderator" &&
+              isActive
+            ) {
+
+              currentRole = "moderator";
+
+              loginBox.style.display = "none";
+              adminArea.style.display = "block";
+
+              if (panelTitle)
+                panelTitle.innerText = "🛡️ Moderator Panel";
+
+              if (modTab)
+                modTab.style.display = "none";
+
+              const histTabM =
+                document.getElementById(
+                  "tabHistoryBtn"
+                );
+
+              if (histTabM)
+                histTabM.style.display = "block";
+
+              if (loginMessage)
+                loginMessage.innerText = "";
+
+              switchAdminTab("pending");
+
+            } else {
+
+              currentRole = "none";
+
+              const roleDebug =
+                rd
+                  ? "role=" +
+                    (role || "নেই") +
+                    (rd.active === false
+                      ? " • নিষ্ক্রিয়"
+                      : "")
+                  : "user doc পাওয়া যায়নি";
+
+              loginBox.style.display = "block";
+              adminArea.style.display = "none";
+
+              if (loginMessage) {
+                loginMessage.innerText =
+                  "আপনি Login আছেন, কিন্তু Moderator access নেই।\n" +
+                  "Login email: " +
+                  (user.email || "not found") +
+                  "\n" +
+                  roleDebug +
+                  "\n\nAdmin-কে জানানো দরকার।";
+              }
+
+            }
+
+          },
+          (err) => {
+
+            console.error("Role check failed:", err);
+
+            if (loginMessage) {
+              loginMessage.innerText =
+                "Role check করা যায়নি (error):\n" +
+                String(err.message || err).slice(0, 100) +
+                "\n\nPage refresh করে আবার চেষ্টা করুন।";
+            }
+
+          }
+        );
+
+      } catch (e) {
+        console.error("Role check failed:", e);
       }
 
     }
