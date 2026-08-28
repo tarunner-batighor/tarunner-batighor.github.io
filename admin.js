@@ -141,6 +141,7 @@
           authorUid: user.uid,
           authorName: user.displayName || "",
           authorEmail: user.email || "",
+          authorPhotoURL: user.photoURL || "",
           createdAt: serverTimestamp()
         }
       );
