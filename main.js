@@ -681,7 +681,7 @@
             ">
                 <div style="font-size:48px;">🗼</div>
                 <h2 style="color:#38bdf8; margin:10px 0 6px;">তারুণ্যের বাতিঘর</h2>
-                <p style="color:var(--text-soft); font-style:italic; margin-bottom:18px;">“তারুণ্যের কলমে, সত্যের কথা”</p>
+                <p style="color:var(--text-soft); font-style:italic; margin-bottom:18px;">“তারুণ্যের কলমে সত্যের কথা”</p>
 
                 <p style="color:var(--text-soft); line-height:1.8; text-align:left; font-size:15px;">
                     তারুণ্যের বাতিঘর একটি তরুণ-কেন্দ্রিক বাংলা লেখার প্ল্যাটফর্ম। সত্য ও ন্যায়ের পথে আলো জ্বালিয়ে রাখাই আমাদের ব্রত। নিয়মিত প্রকাশিত হয় —
