@@ -946,6 +946,11 @@
         "publishedPosts"
       );
 
+    const moderatorsDiv =
+      document.getElementById(
+        "moderatorsSection"
+      );
+
     const pendingBtn =
       document.getElementById(
         "tabPendingBtn"
@@ -956,29 +961,66 @@
         "tabPublishedBtn"
       );
 
+    const moderatorsBtn =
+      document.getElementById(
+        "tabModeratorsBtn"
+      );
+
+    /* Moderators tab শুধু Admin-এর জন্য —
+       অন্যকে চাপলে Pending-এ ফেরে */
+
+    if (
+      tab === "moderators" &&
+      currentRole !== "admin"
+    ) {
+      tab = "pending";
+    }
+
+
+    /* সব content লুকিয়ে, সব tab inactive করি */
+
+    pendingDiv.style.display = "none";
+    publishedDiv.style.display = "none";
+
+    if (moderatorsDiv)
+      moderatorsDiv.style.display = "none";
+
+    pendingBtn.style.background = "#334155";
+    pendingBtn.style.color = "white";
+
+    publishedBtn.style.background = "#334155";
+    publishedBtn.style.color = "white";
+
+    if (moderatorsBtn) {
+      moderatorsBtn.style.background = "#334155";
+      moderatorsBtn.style.color = "white";
+    }
+
+
     if (tab === "published") {
 
-      pendingDiv.style.display = "none";
       publishedDiv.style.display = "block";
-
-      pendingBtn.style.background = "#334155";
-      pendingBtn.style.color = "white";
 
       publishedBtn.style.background = "#38bdf8";
       publishedBtn.style.color = "#0f172a";
 
       loadPublishedPostsAdmin();
 
+    } else if (tab === "moderators") {
+
+      moderatorsDiv.style.display = "block";
+
+      moderatorsBtn.style.background = "#38bdf8";
+      moderatorsBtn.style.color = "#0f172a";
+
+      loadModerators();
+
     } else {
 
       pendingDiv.style.display = "block";
-      publishedDiv.style.display = "none";
 
       pendingBtn.style.background = "#38bdf8";
       pendingBtn.style.color = "#0f172a";
-
-      publishedBtn.style.background = "#334155";
-      publishedBtn.style.color = "white";
 
       loadPendingPosts();
 
