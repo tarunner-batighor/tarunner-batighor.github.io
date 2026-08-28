@@ -17,8 +17,7 @@
     limit,
     updateDoc,
     deleteDoc,
-    doc,
-    FieldValue
+    doc
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   import {
@@ -1456,6 +1455,8 @@
          (role field শুধু Admin set করে,
           নিজে নিজে বদলানো rules-এ ব্লক) */
 
+      let roleDebug = "";
+
       try {
 
         const snap =
@@ -1463,6 +1464,15 @@
             doc(db, "users", user.uid)
           );
 
+
+        if (snap.exists()) {
+          const rd = snap.data();
+          roleDebug =
+            "role=" + (rd.role || "নেই") +
+            (rd.active === false ? " • নিষ্ক্রিয়" : "");
+        } else {
+          roleDebug = "user doc পাওয়া যায়নি";
+        }
 
         if (
           snap.exists() &&
@@ -1500,6 +1510,8 @@
 
       } catch (e) {
         console.error("Role check failed:", e);
+        roleDebug = "role check error: " +
+          String(e.message || e).slice(0, 80);
       }
 
 
@@ -1512,7 +1524,12 @@
 
       if (loginMessage) {
         loginMessage.innerText =
-          "আপনি Login আছেন, কিন্তু Moderator access নেই।\nAdmin-কে জানানো দরকার।";
+          "আপনি Login আছেন, কিন্তু Moderator access নেই।\n"          +
+          "Login email: " +
+          (user.email || "not found") +
+          "\n" +
+          roleDebug +
+          "\n\nAdmin-কে জানানো দরকার।";
       }
 
     }
@@ -1859,7 +1876,7 @@
                       lastEditedBy: staff.name,
                       lastEditedAt:
                         serverTimestamp(),
-                      reviewedBy: FieldValue.delete()
+                      reviewedBy: null
                     }
                   );
 
@@ -1940,7 +1957,7 @@
                         email: staff.email,
                         at: serverTimestamp()
                       },
-                      reviewedBy: FieldValue.delete()
+                      reviewedBy: null
                     }
                   );
 
@@ -2082,7 +2099,7 @@
                       email: staff.email,
                       at: serverTimestamp()
                     },
-                    reviewedBy: FieldValue.delete()
+                    reviewedBy: null
                   };
 
                   if (reason) {
@@ -2618,7 +2635,7 @@
                       lastEditedBy: staff.name,
                       lastEditedAt:
                         serverTimestamp(),
-                      reviewedBy: FieldValue.delete()
+                      reviewedBy: null
                     }
                   );
 
@@ -3207,7 +3224,7 @@
                     ),
                     {
                       role:
-                        FieldValue.delete()
+                        null
                     }
                   );
 
@@ -3501,7 +3518,7 @@
                           ),
                           {
                             role:
-                              FieldValue.delete()
+                              null
                           }
                         );
 
