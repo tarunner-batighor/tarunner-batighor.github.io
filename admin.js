@@ -10,8 +10,11 @@
     serverTimestamp,
     getDocs,
     getDoc,
+    setDoc,
     query,
     where,
+    orderBy,
+    limit,
     updateDoc,
     deleteDoc,
     doc,
@@ -548,6 +551,138 @@
 
 
   /* =========================
+     REJECT REASON MODAL
+     (Reject-এর কারণ — ঐচ্ছিক,
+      লেখকের notification-এ যাবে)
+  ========================= */
+
+  function openRejectReasonModal(postTitle) {
+
+    return new Promise((resolve) => {
+
+      const overlay =
+        document.createElement("div");
+
+      overlay.style.cssText = `
+        position:fixed;
+        inset:0;
+        z-index:99999;
+        background:rgba(0,0,0,.75);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:20px;
+      `;
+
+      overlay.innerHTML = `
+        <div style="
+          width:100%;
+          max-width:440px;
+          background:#1e293b;
+          padding:22px;
+          border-radius:16px;
+          box-shadow:0 10px 40px rgba(0,0,0,.5);
+        ">
+          <h3 style="
+            color:#f59e0b;
+            text-align:center;
+            margin:0 0 8px;
+            font-size:17px;
+          ">
+            🚫 Post Reject
+          </h3>
+          <p style="
+            color:#94a3b8;
+            font-size:13px;
+            text-align:center;
+            margin-bottom:14px;
+          ">
+            "${postTitle}"
+          </p>
+          <textarea
+            id="rejectReasonInput"
+            rows="3"
+            placeholder="Reject-এর কারণ লিখুন (ঐচ্ছিক) — এটা লেখকের notification-এ যাবে"
+            style="
+              width:100%;
+              padding:12px;
+              border-radius:10px;
+              border:none;
+              font-size:14px;
+              font-family:inherit;
+              background:white;
+              color:#0f172a;
+              box-sizing:border-box;
+              resize:vertical;
+            "
+          ></textarea>
+          <div style="
+            display:flex;
+            gap:10px;
+            margin-top:14px;
+          ">
+            <button
+              id="rejectCancelBtn"
+              style="
+                flex:1;
+                padding:12px;
+                border:none;
+                border-radius:9px;
+                background:#64748b;
+                color:white;
+                cursor:pointer;
+                font-size:14px;
+              "
+            >
+              বাতিল
+            </button>
+            <button
+              id="rejectConfirmBtn"
+              style="
+                flex:1;
+                padding:12px;
+                border:none;
+                border-radius:9px;
+                background:#f59e0b;
+                color:white;
+                cursor:pointer;
+                font-size:14px;
+                font-weight:bold;
+              "
+            >
+              🚫 Reject করুন
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+
+      overlay
+        .querySelector("#rejectConfirmBtn")
+        .addEventListener("click", () => {
+          const reason =
+            overlay
+              .querySelector("#rejectReasonInput")
+              .value
+              .trim();
+          overlay.remove();
+          resolve(reason);
+        });
+
+      overlay
+        .querySelector("#rejectCancelBtn")
+        .addEventListener("click", () => {
+          overlay.remove();
+          resolve(null);
+        });
+
+    });
+
+  }
+
+
+  /* =========================
      ADMIN BUTTON
   ========================= */
 
@@ -802,6 +937,25 @@
             👥 Moderators
           </button>
 
+
+          <button
+            id="tabHistoryBtn"
+            style="
+              display:none;
+              flex:1;
+              padding:12px;
+              border:none;
+              border-radius:9px;
+              background:#334155;
+              color:white;
+              cursor:pointer;
+              font-weight:bold;
+              font-size:15px;
+            "
+          >
+            📜 History
+          </button>
+
         </div>
 
 
@@ -881,6 +1035,13 @@
           </h4>
           <div id="modList">Loading...</div>
 
+        </div>
+
+
+        <!-- ACTIVITY HISTORY (Admin + Moderator দেখতে পায়) -->
+
+        <div id="historySection" style="display:none;">
+          <div id="activityList">Loading...</div>
         </div>
 
       </div>
@@ -966,12 +1127,31 @@
         "tabModeratorsBtn"
       );
 
+    const historyDiv =
+      document.getElementById(
+        "historySection"
+      );
+
+    const historyBtn =
+      document.getElementById(
+        "tabHistoryBtn"
+      );
+
     /* Moderators tab শুধু Admin-এর জন্য —
        অন্যকে চাপলে Pending-এ ফেরে */
 
     if (
       tab === "moderators" &&
       currentRole !== "admin"
+    ) {
+      tab = "pending";
+    }
+
+    /* History tab — শুধু staff (admin/moderator) */
+
+    if (
+      tab === "history" &&
+      currentRole === "none"
     ) {
       tab = "pending";
     }
@@ -985,6 +1165,9 @@
     if (moderatorsDiv)
       moderatorsDiv.style.display = "none";
 
+    if (historyDiv)
+      historyDiv.style.display = "none";
+
     pendingBtn.style.background = "#334155";
     pendingBtn.style.color = "white";
 
@@ -994,6 +1177,11 @@
     if (moderatorsBtn) {
       moderatorsBtn.style.background = "#334155";
       moderatorsBtn.style.color = "white";
+    }
+
+    if (historyBtn) {
+      historyBtn.style.background = "#334155";
+      historyBtn.style.color = "white";
     }
 
 
@@ -1014,6 +1202,15 @@
       moderatorsBtn.style.color = "#0f172a";
 
       loadModerators();
+
+    } else if (tab === "history") {
+
+      historyDiv.style.display = "block";
+
+      historyBtn.style.background = "#38bdf8";
+      historyBtn.style.color = "#0f172a";
+
+      loadActivity();
 
     } else {
 
@@ -1054,6 +1251,16 @@
       "click",
       () => {
         switchAdminTab("moderators");
+      }
+    );
+
+
+  document
+    .getElementById("tabHistoryBtn")
+    .addEventListener(
+      "click",
+      () => {
+        switchAdminTab("history");
       }
     );
 
@@ -1199,6 +1406,25 @@
 
         currentRole = "admin";
 
+        /* Main Admin config — moderator activity
+           notification পাঠাতে admin-কে খুঁজতে লাগে */
+
+        setDoc(
+          doc(db, "config", "mainAdmin"),
+          {
+            uid: user.uid,
+            email: user.email,
+            name: user.displayName || user.email,
+            updatedAt: serverTimestamp()
+          },
+          { merge: true }
+        ).catch(function (e) {
+          console.warn(
+            "mainAdmin config save failed:",
+            e.message
+          );
+        });
+
         loginBox.style.display = "none";
         adminArea.style.display = "block";
 
@@ -1207,6 +1433,14 @@
 
         if (modTab)
           modTab.style.display = "block";
+
+        const histTabA =
+          document.getElementById(
+            "tabHistoryBtn"
+          );
+
+        if (histTabA)
+          histTabA.style.display = "block";
 
         if (loginMessage)
           loginMessage.innerText = "";
@@ -1232,7 +1466,8 @@
 
         if (
           snap.exists() &&
-          snap.data().role === "moderator"
+          snap.data().role === "moderator" &&
+          snap.data().active !== false
         ) {
 
           currentRole = "moderator";
@@ -1245,6 +1480,14 @@
 
           if (modTab)
             modTab.style.display = "none";
+
+          const histTabM =
+            document.getElementById(
+              "tabHistoryBtn"
+            );
+
+          if (histTabM)
+            histTabM.style.display = "block";
 
           if (loginMessage)
             loginMessage.innerText = "";
@@ -1360,6 +1603,70 @@
             postDoc.data();
 
 
+          /* Conflict indicator: কে এই post review করছেন
+             (soft hint — ১০ মিনিটের বেশি পুরনো হলে লুকায়) */
+
+          const myStaffName =
+            (auth.currentUser &&
+              (auth.currentUser.displayName ||
+                auth.currentUser.email)) ||
+            "";
+
+          let reviewBadge = "";
+
+          if (post.reviewedBy) {
+
+            const rAtMs =
+              post.reviewedAt &&
+              typeof post.reviewedAt.toMillis ===
+              "function"
+                ? post.reviewedAt.toMillis()
+                : post.reviewedAt
+                  ? post.reviewedAt.seconds * 1000
+                  : 0;
+
+            if (
+              Date.now() - rAtMs < 10 * 60 * 1000
+            ) {
+
+              if (post.reviewedBy === myStaffName) {
+
+                reviewBadge = `
+                  <div style="
+                    background:#0c4a6e;
+                    color:#7dd3fc;
+                    padding:8px 12px;
+                    border-radius:8px;
+                    font-size:12.5px;
+                    margin-bottom:10px;
+                  ">
+                    ⏳ আপনি এই পোস্টটি review করছেন
+                  </div>
+                `;
+
+              } else {
+
+                reviewBadge = `
+                  <div style="
+                    background:#451a03;
+                    color:#fbbf24;
+                    padding:8px 12px;
+                    border-radius:8px;
+                    font-size:12.5px;
+                    margin-bottom:10px;
+                  ">
+                    ⏳ Currently being reviewed by
+                    <strong>${escapeHtml(post.reviewedBy)}</strong>
+                  </div>
+                `;
+
+              }
+
+            }
+
+          }
+
+
           const card =
             document.createElement(
               "div"
@@ -1394,6 +1701,8 @@
             ">
               ✍️ লেখক: <strong>${escapeHtml(post.authorName || "Anonymous")}</strong>${post.authorEmail ? ` <span style="color:#475569;">(${escapeHtml(post.authorEmail)})</span>` : ""}
             </p>
+
+            ${reviewBadge}
 
 
             <p style="
@@ -1509,6 +1818,18 @@
               "click",
               async () => {
 
+                /* Conflict marker: এই post এখন আপনি review করছেন */
+
+                try {
+                  await updateDoc(
+                    doc(db, "Posts", postDoc.id),
+                    {
+                      reviewedBy: staffInfo().name,
+                      reviewedAt: serverTimestamp()
+                    }
+                  );
+                } catch (e) {}
+
                 const result =
                   await openPostEditor({
                     title: post.title || "",
@@ -1537,9 +1858,29 @@
                       category: result.category,
                       lastEditedBy: staff.name,
                       lastEditedAt:
-                        serverTimestamp()
+                        serverTimestamp(),
+                      reviewedBy: FieldValue.delete()
                     }
                   );
+
+                  logActivity(
+                    "edited",
+                    {
+                      id: postDoc.id,
+                      title: post.title || ""
+                    }
+                  );
+
+                  if (currentRole === "moderator") {
+                    notifyMainAdmin(
+                      "🛡️ " +
+                      staff.name +
+                      " Edit করেছেন: \"" +
+                      (post.title || "") +
+                      "\""
+                    );
+                  }
+
 
                   alert(
                     "✏️ পোস্ট আপডেট হয়েছে!"
@@ -1598,7 +1939,8 @@
                         name: staff.name,
                         email: staff.email,
                         at: serverTimestamp()
-                      }
+                      },
+                      reviewedBy: FieldValue.delete()
                     }
                   );
 
@@ -1658,6 +2000,25 @@
 
                   }
 
+
+
+                  logActivity(
+                    "approved",
+                    {
+                      id: postDoc.id,
+                      title: post.title || ""
+                    }
+                  );
+
+                  if (currentRole === "moderator") {
+                    notifyMainAdmin(
+                      "🛡️ " +
+                      staff.name +
+                      " Published করেছেন: \"" +
+                      (post.title || "") +
+                      "\""
+                    );
+                  }
 
 
                   alert(
@@ -1698,11 +2059,12 @@
               "click",
               async () => {
 
-                if (
-                  !confirm(
-                    "এই পোস্টটি Reject করতে চান?"
-                  )
-                ) {
+                const reason =
+                  await openRejectReasonModal(
+                    post.title || ""
+                  );
+
+                if (reason === null) {
                   return;
                 }
 
@@ -1712,22 +2074,34 @@
                   const staff =
                     staffInfo();
 
+                  const rejectUpdate = {
+                    status:
+                      "rejected",
+                    moderatedBy: {
+                      name: staff.name,
+                      email: staff.email,
+                      at: serverTimestamp()
+                    },
+                    reviewedBy: FieldValue.delete()
+                  };
+
+                  if (reason) {
+                    rejectUpdate.rejectReason = reason;
+                  }
+
                   await updateDoc(
                     doc(
                       db,
                       "Posts",
                       postDoc.id
                     ),
-                    {
-                      status:
-                        "rejected",
-                      moderatedBy: {
-                        name: staff.name,
-                        email: staff.email,
-                        at: serverTimestamp()
-                      }
-                    }
+                    rejectUpdate
                   );
+
+
+                  const rejectMsg =
+                    "দুঃখিত, আপনার পোস্টটি অনুমোদিত হয়নি।" +
+                    (reason ? "\n\nকারণ: " + reason : "");
 
 
                   if (post.authorUid) {
@@ -1748,7 +2122,7 @@
                           type: "rejected",
                           postId: postDoc.id,
                           postTitle: post.title || "",
-                          message: "দুঃখিত, আপনার পোস্টটি অনুমোদিত হয়নি।",
+                          message: rejectMsg,
                           read: false,
                           pushedAt: null,
                           createdAt: serverTimestamp()
@@ -1768,7 +2142,7 @@
                           type: "rejected",
                           postId: postDoc.id,
                           postTitle: post.title || "",
-                          message: "দুঃখিত, আপনার পোস্টটি অনুমোদিত হয়নি।",
+                          message: rejectMsg,
                           createdAt: serverTimestamp()
                         }
                       );
@@ -1785,6 +2159,27 @@
 
                   }
 
+
+
+                  logActivity(
+                    "rejected",
+                    {
+                      id: postDoc.id,
+                      title: post.title || ""
+                    },
+                    reason || ""
+                  );
+
+                  if (currentRole === "moderator") {
+                    notifyMainAdmin(
+                      "🛡️ " +
+                      staff.name +
+                      " Reject করেছেন: \"" +
+                      (post.title || "") +
+                      "\"" +
+                      (reason ? "\nকারণ: " + reason : "")
+                    );
+                  }
 
 
                   alert(
@@ -2222,9 +2617,29 @@
                       category: result.category,
                       lastEditedBy: staff.name,
                       lastEditedAt:
-                        serverTimestamp()
+                        serverTimestamp(),
+                      reviewedBy: FieldValue.delete()
                     }
                   );
+
+                  logActivity(
+                    "edited",
+                    {
+                      id: postDoc.id,
+                      title: post.title || ""
+                    }
+                  );
+
+                  if (currentRole === "moderator") {
+                    notifyMainAdmin(
+                      "🛡️ " +
+                      staff.name +
+                      " Edit করেছেন: \"" +
+                      (post.title || "") +
+                      "\""
+                    );
+                  }
+
 
                   alert(
                     "✏️ পোস্ট আপডেট হয়েছে!"
@@ -2353,6 +2768,104 @@
   }
 
 
+  /* Activity log — প্রতিটি edit/approve/reject-এর রেকর্ড */
+
+  function logActivity(type, post, reason) {
+
+    try {
+
+      const staff =
+        staffInfo();
+
+      const data = {
+        type: type,
+        postId: post.id,
+        postTitle: post.title || "",
+        actorName: staff.name,
+        actorEmail: staff.email,
+        at: serverTimestamp()
+      };
+
+      if (reason) {
+        data.reason = reason;
+      }
+
+      addDoc(
+        collection(db, "modActivity"),
+        data
+      ).catch(function (e) {
+        console.warn(
+          "activity log write failed:",
+          e.message
+        );
+      });
+
+    } catch (e) {
+      console.warn("logActivity error:", e);
+    }
+
+  }
+
+
+  /* Moderator কাজ করলে Main Admin-কে
+     in-site notification (bell-এ) যায় */
+
+  async function notifyMainAdmin(message) {
+
+    try {
+
+      const staff =
+        staffInfo();
+
+      const cfgSnap =
+        await getDoc(
+          doc(db, "config", "mainAdmin")
+        );
+
+      if (!cfgSnap.exists()) {
+        return;
+      }
+
+      const cfg =
+        cfgSnap.data();
+
+      /* নিজে নিজে করলে নিজে পাঠাবে না */
+
+      if (
+        staff.email &&
+        cfg.email &&
+        String(cfg.email).toLowerCase() ===
+        staff.email.toLowerCase()
+      ) {
+        return;
+      }
+
+      await addDoc(
+        collection(
+          db,
+          "users",
+          cfg.uid,
+          "notifications"
+        ),
+        {
+          type: "modActivity",
+          message: message,
+          read: false,
+          createdAt:
+            serverTimestamp()
+        }
+      );
+
+    } catch (e) {
+      console.warn(
+        "admin activity notify failed:",
+        e.message
+      );
+    }
+
+  }
+
+
   /* নতুন rules Firebase-এ Publish না থাকলে
      বড় ও পরিষ্কার সতর্কবার্তা দেখায় */
 
@@ -2385,6 +2898,154 @@
         পুরনো সব মুছে নতুনটা paste → <strong>Publish</strong>
       </div>
     `;
+
+  }
+
+
+  /* Activity history — কোন Moderator কী করেছে */
+
+  async function loadActivity() {
+
+    const container =
+      document.getElementById(
+        "activityList"
+      );
+
+    if (!container) {
+      return;
+    }
+
+    container.innerHTML =
+      "<p>খোঁজা হচ্ছে...</p>";
+
+    try {
+
+      const snap =
+        await getDocs(
+          query(
+            collection(
+              db,
+              "modActivity"
+            ),
+            orderBy(
+              "at",
+              "desc"
+            ),
+            limit(30)
+          )
+        );
+
+      if (snap.empty) {
+
+        container.innerHTML = `
+          <div style="
+            background:#1e293b;
+            padding:16px;
+            border-radius:12px;
+            text-align:center;
+            color:#94a3b8;
+          ">
+            এখনো কোনো activity নেই।
+          </div>
+        `;
+
+        return;
+
+      }
+
+      const labels = {
+        approved: {
+          icon: "✅",
+          text: "Published করেছেন"
+        },
+        rejected: {
+          icon: "🚫",
+          text: "Reject করেছেন"
+        },
+        edited: {
+          icon: "✏️",
+          text: "Edit করেছেন"
+        }
+      };
+
+      container.innerHTML = "";
+
+      snap.forEach(
+        (aDoc) => {
+
+          const a =
+            aDoc.data();
+
+          const meta =
+            labels[a.type] || {
+              icon: "•",
+              text: a.type
+            };
+
+          const row =
+            document.createElement(
+              "div"
+            );
+
+          row.style.cssText = `
+            background:#1e293b;
+            border:1px solid #334155;
+            border-radius:10px;
+            padding:10px 14px;
+            margin-bottom:8px;
+            color:#e2e8f0;
+            font-size:13.5px;
+            line-height:1.5;
+          `;
+
+          const when =
+            a.at &&
+            typeof a.at.toDate ===
+              "function"
+              ? a.at.toDate()
+              : a.at
+                ? new Date(a.at.seconds * 1000)
+                : null;
+
+          const whenStr =
+            when
+              ? when.toLocaleString("bn-BD", {
+                  day: "2-digit",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit"
+                })
+              : "";
+
+          row.innerHTML = `
+            <div>
+              <strong>${meta.icon} ${escapeHtml(a.actorName || "Unknown")}</strong>
+              ${meta.text}
+              "${escapeHtml(a.postTitle || "")}"
+            </div>
+            ${a.reason ? `<div style="color:#fca5a5;font-size:12.5px;margin-top:4px;">কারণ: ${escapeHtml(a.reason)}</div>` : ""}
+            <div style="color:#64748b;font-size:11.5px;margin-top:4px;">${whenStr}</div>
+          `;
+
+          container.appendChild(
+            row
+          );
+
+        }
+      );
+
+    } catch (e) {
+
+      console.error(e);
+
+      const msg =
+        String(e.message || "");
+
+      container.innerHTML =
+        "❌ লোড করা যায়নি: " +
+        escapeHtml(msg);
+
+    }
 
   }
 
@@ -2482,8 +3143,26 @@
                 ${escapeHtml(
                   u.email || ""
                 )}
+                ${u.active === false ? ' • <span style="color:#f87171;">🔴 নিষ্ক্রিয়</span>' : ' • <span style="color:#34d399;">🟢 সক্রিয়</span>'}
               </div>
             </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button
+              class="toggleActiveBtn"
+              data-uid="${uDoc.id}"
+              style="
+                background:${u.active === false ? "#10b981" : "#f59e0b"};
+                color:white;
+                border:none;
+                padding:7px 12px;
+                border-radius:7px;
+                font-size:13px;
+                font-weight:bold;
+                cursor:pointer;
+              "
+            >
+              ${u.active === false ? "🟢 সক্রিয় করুন" : "🔴 নিষ্ক্রিয় করুন"}
+            </button>
             <button
               class="removeModBtn"
               style="
@@ -2499,6 +3178,7 @@
             >
               মোডারেটর বাতিল
             </button>
+            </div>
           `;
 
           row
@@ -2547,6 +3227,53 @@
 
               }
             );
+
+          const toggleBtn =
+            row.querySelector(
+              ".toggleActiveBtn"
+            );
+
+          if (toggleBtn) {
+            toggleBtn.addEventListener(
+              "click",
+              async () => {
+
+                const goActive =
+                  u.active === false;
+
+                try {
+
+                  await updateDoc(
+                    doc(
+                      db,
+                      "users",
+                      uDoc.id
+                    ),
+                    {
+                      active: goActive
+                    }
+                  );
+
+                  alert(
+                    goActive
+                      ? "✅ এখন সক্রিয় — প্যানেল আবার খুলবে।"
+                      : "⏸️ এখন নিষ্ক্রিয় — মোডারেটর প্যানেল আর খুলতে পারবে না।"
+                  );
+
+                  loadModerators();
+
+                } catch (e) {
+                  console.error(e);
+                  alert(
+                    "❌ কাজ করা যায়নি:\n\n" +
+                    e.message
+                  );
+                }
+
+              }
+            );
+          }
+
 
           container.appendChild(
             row
