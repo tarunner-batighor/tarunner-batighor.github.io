@@ -1,15 +1,15 @@
 // @ts-nocheck
 /* ============================================================
    তারুণ্যের বাতিঘর — Leaderboard (🏆)
-   - পেজের নিচের দিকে একটি বড়, আকর্ষণীয় Leaderboard section
-     (ফ্লোটিং বাটন নেই — স্ক্রল করলেই দেখা যায়)
-   - মোট স্কোর-এর ভিত্তিতে র‍্যাংকিং:
-     স্কোর = পোস্ট×১০ + ভিউ×১ + লাইক×৫ + কমেন্ট×১৫
-   - ৩টা ট্যাব: সেরা লেখক (স্কোর) / সেরা পোস্টকারী / সর্বোচ্চ ভিউ
-   - প্রতি রাউ: Rank + নাম + প্রোফাইল ছবি + পোস্ট/ভিউ/লাইক/কমেন্ট + স্কোর
-   - Top 3 বিশেষ highlight (gold/silver/bronze)
-   - সাইটের থিম ভেরিয়েবল ব্যবহার করে — light/dark দুটোয়ই মানানসই
-   - সবাই দেখতে পারবে (শুধু Published পোস্ট গণনা হয়)
+   - পেজের নিচের দিকে একটি বড় Leaderboard section
+   - ডক মেনুতে ছোট 🏆 আইকন — ট্যাপ করলে স্ক্রল করে section-এ যায়
+   - স্কোর = পোস্ট×১০ + ভিউ×১ + লাইক×৫
+     (কমেন্টের মার্ক নেই — নিজের পোস্টে নিজের কমেন্ট করে
+      স্কোর বাড়ানো যাবে না; কমেন্ট সংখ্যা শুধু দেখানো হয়)
+   - নামের উপর ট্যাপ করলে সেই লেখকের সেরা লেখাগুলো খোলে
+     (সর্বাধিক ভিউ পাওয়া ৫টা পোস্ট) — টাইটেলে ট্যাপে পোস্ট পড়া যায়
+   - Top 3 highlight (gold/silver/bronze)
+   - সাইটের থিম ভেরিয়েবল — light/dark দুটোয়ই মানানসই
    - self-contained: main.js-এ কোনো পরিবর্তন নেই
 ============================================================ */
 
@@ -44,12 +44,12 @@ const db = getFirestore(app);
 ========================= */
 
 let lbEntries = [];
-let lbTab = "score"; /* "score" | "posts" | "views" */
 let lbLoading = false;
 let lbLoaded = false;
 
 const TOP_N = 20;
-const WEIGHTS = { posts: 10, views: 1, likes: 5, comments: 15 };
+const BEST_POSTS_N = 5;
+const WEIGHTS = { posts: 10, views: 1, likes: 5 };
 
 /* =========================
    HELPERS
@@ -125,22 +125,7 @@ async function poolMap(items, size, fn) {
 ========================= */
 
 function calcScore(e) {
-  return (
-    e.posts * WEIGHTS.posts +
-    e.views * WEIGHTS.views +
-    e.likes * WEIGHTS.likes +
-    e.comments * WEIGHTS.comments
-  );
-}
-
-function sortEntries() {
-  if (lbTab === "posts") {
-    lbEntries.sort((a, b) => b.posts - a.posts || b.views - a.views);
-  } else if (lbTab === "views") {
-    lbEntries.sort((a, b) => b.views - a.views || b.posts - a.posts);
-  } else {
-    lbEntries.sort((a, b) => b.score - a.score || b.posts - a.posts);
-  }
+  return e.posts * WEIGHTS.posts + e.views * WEIGHTS.views + e.likes * WEIGHTS.likes;
 }
 
 async function loadLeaderboard() {
@@ -166,7 +151,7 @@ async function loadLeaderboard() {
     const postDocs = [];
     snap.forEach((d) => postDocs.push(d));
 
-    /* 2) পোস্ট + ভিউ হিসাব (author অনুযায়ী) */
+    /* 2) পোস্ট + ভিউ + প্রতি লেখকের পোস্ট-লিস্ট */
     const map = new Map();
 
     postDocs.forEach((postDoc) => {
@@ -184,21 +169,26 @@ async function loadLeaderboard() {
           posts: 0,
           views: 0,
           likes: 0,
-          comments: 0
+          comments: 0,
+          _postList: []
         };
         map.set(uid, e);
       }
 
       e.posts += 1;
       e.views += (typeof p.viewCount === "number" ? p.viewCount : 0);
+      e._postList.push({
+        id: postDoc.id,
+        title: p.title || "",
+        views: typeof p.viewCount === "number" ? p.viewCount : 0
+      });
 
       if (!e.photo && p.authorPhotoURL) e.photo = p.authorPhotoURL;
       if (!e.name && p.authorName) e.name = p.authorName;
     });
 
     /* 3) লাইক + কমেন্ট — প্রতি পোস্টের subcollection থেকে
-         (published পোস্টের reactions/comments public, rules v5.1)
-         এক পোস্টে সমস্যা হলে বাকিটা চলবে (partial data OK) */
+         (published পোস্টের reactions/comments public, rules v5.1) */
     let done = 0;
     const total = postDocs.length;
 
@@ -242,13 +232,21 @@ async function loadLeaderboard() {
       }
     });
 
-    /* 4) স্কোর + sort + render */
+    /* 4) স্কোর + সেরা লেখা (সর্বাধিক ভিউ) + sort + render */
     lbEntries = Array.from(map.values()).map(function (e) {
       e.score = calcScore(e);
+      e.bestPosts = e._postList
+        .slice()
+        .sort(function (a, b) { return b.views - a.views; })
+        .slice(0, BEST_POSTS_N);
+      delete e._postList;
       return e;
     });
 
-    sortEntries();
+    lbEntries.sort(function (a, b) {
+      return b.score - a.score || b.posts - a.posts;
+    });
+
     renderLeaderboard();
     lbLoaded = true;
 
@@ -289,6 +287,23 @@ function scoreColor(rank) {
   if (rank === 2) return "var(--text-soft)";
   if (rank === 3) return "#d97706";
   return "var(--row-title)";
+}
+
+function worksHtml(e) {
+  if (!e.bestPosts || !e.bestPosts.length) return "";
+  return `
+    <div class="lb-works" data-works-for="${escapeHtml(e.uid)}">
+      <p class="lb-works-head">📚 ${escapeHtml(e.name)}-এর সেরা লেখা</p>
+      ${e.bestPosts.map(function (p) {
+        return `
+        <div class="lb-work" data-post-id="${escapeHtml(p.id)}">
+          <span class="lb-work-title">${escapeHtml(p.title)}</span>
+          <span class="lb-work-views">👀 ${bengaliNum(p.views)}</span>
+        </div>`;
+      }).join("")}
+      <p class="lb-works-note">টাইটেলে ট্যাপ করে পড়া যাবে</p>
+    </div>
+  `;
 }
 
 function renderLeaderboard() {
@@ -337,34 +352,56 @@ function renderLeaderboard() {
     const avatarSize = top ? 48 : 42;
 
     return `
-      <div class="lb-row" style="${cardStyle}">
-        <div class="lb-rank">${rankBadge(rank)}</div>
+      <div class="lb-row-wrap">
+        <div class="lb-row lb-row-tap" data-uid="${escapeHtml(e.uid)}" style="${cardStyle}">
+          <div class="lb-rank">${rankBadge(rank)}</div>
 
-        <div class="lb-avatar-wrap" style="${avatarRing}">
-          ${avatarHtml(e, avatarSize)}
-        </div>
-
-        <div class="lb-info">
-          <div class="lb-name" style="${nameColor}">
-            ${rank === 1 ? "👑 " : ""}${escapeHtml(e.name)}
-            ${isMe ? '<span class="lb-me">আপনি</span>' : ""}
+          <div class="lb-avatar-wrap" style="${avatarRing}">
+            ${avatarHtml(e, avatarSize)}
           </div>
-          <div class="lb-email">${escapeHtml(e.email || "")}</div>
-          <div class="lb-mini">
-            <span>📝 <b>${bengaliNum(e.posts)}</b></span>
-            <span>👀 <b>${bengaliNum(e.views)}</b></span>
-            <span>❤️ <b>${bengaliNum(e.likes)}</b></span>
-            <span>💬 <b>${bengaliNum(e.comments)}</b></span>
-          </div>
-        </div>
 
-        <div class="lb-score">
-          <span class="lb-score-val" style="color:${scoreColor(rank)};">${bengaliNum(e.score)}</span>
-          <span class="lb-score-lbl">স্কোর</span>
+          <div class="lb-info">
+            <div class="lb-name" style="${nameColor}">
+              ${rank === 1 ? "👑 " : ""}${escapeHtml(e.name)}
+              ${isMe ? '<span class="lb-me">আপনি</span>' : ""}
+            </div>
+            <div class="lb-email">${escapeHtml(e.email || "")}</div>
+            <div class="lb-mini">
+              <span>📝 <b>${bengaliNum(e.posts)}</b></span>
+              <span>👀 <b>${bengaliNum(e.views)}</b></span>
+              <span>❤️ <b>${bengaliNum(e.likes)}</b></span>
+              <span>💬 <b>${bengaliNum(e.comments)}</b></span>
+            </div>
+          </div>
+
+          <div class="lb-score">
+            <span class="lb-score-val" style="color:${scoreColor(rank)};">${bengaliNum(e.score)}</span>
+            <span class="lb-score-lbl">স্কোর</span>
+          </div>
+
+          <span class="lb-chev">▾</span>
         </div>
+        ${worksHtml(e)}
       </div>
     `;
   }).join("");
+
+  /* ---- row tap → সেরা লেখা খুলে/বন্ধ ---- */
+  list.querySelectorAll(".lb-row-tap").forEach(function (row) {
+    row.addEventListener("click", function () {
+      const wrap = row.parentElement;
+      wrap.classList.toggle("lb-open");
+    });
+  });
+
+  /* ---- work tap → পোস্ট খোলে (main.js-এর #post/ mechanism) ---- */
+  list.querySelectorAll(".lb-work").forEach(function (w) {
+    w.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      const pid = w.getAttribute("data-post-id");
+      if (pid) location.hash = "post/" + pid;
+    });
+  });
 }
 
 /* =========================
@@ -443,34 +480,9 @@ function buildSection() {
       line-height: 1.5;
     }
 
-    .lb-tabs {
-      display: flex;
-      gap: 7px;
-      margin-top: 14px;
-    }
+    .lb-list { margin-top: 16px; }
 
-    .lb-tab {
-      flex: 1;
-      padding: 10px 6px;
-      border: 1px solid var(--row-border);
-      border-radius: 10px;
-      background: var(--row-bg);
-      color: var(--text-faint);
-      cursor: pointer;
-      font-weight: 700;
-      font-size: 13.5px;
-      font-family: inherit;
-      transition: all .15s ease;
-    }
-
-    .lb-tab-on {
-      border-color: var(--gold);
-      color: var(--gold);
-      background: rgba(251, 191, 36, 0.08);
-      font-weight: 800;
-    }
-
-    .lb-list { margin-top: 14px; }
+    .lb-row-wrap:last-child .lb-row { margin-bottom: 0; }
 
     .lb-row {
       display: flex;
@@ -482,6 +494,14 @@ function buildSection() {
       background: var(--row-bg);
       border: 1px solid var(--row-border);
     }
+
+    .lb-row-tap {
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .12s ease;
+    }
+
+    .lb-row-tap:active { transform: scale(0.985); }
 
     .lb-rank {
       width: 34px;
@@ -600,6 +620,74 @@ function buildSection() {
       display: block;
     }
 
+    .lb-chev {
+      flex-shrink: 0;
+      color: var(--text-faint);
+      font-size: 14px;
+      transition: transform .2s ease;
+    }
+
+    .lb-row-wrap.lb-open .lb-chev { transform: rotate(180deg); }
+
+    /* ---- নাম ট্যাপে খোলে: সেরা লেখা ---- */
+    .lb-works {
+      display: none;
+      margin: -4px 12px 12px;
+      padding: 12px;
+      background: var(--row-bg);
+      border: 1px dashed var(--row-border);
+      border-radius: 12px;
+    }
+
+    .lb-row-wrap.lb-open .lb-works { display: block; }
+
+    .lb-works-head {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-soft);
+      margin: 0 0 8px;
+    }
+
+    .lb-work {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 9px;
+      background: var(--panel-bg);
+      border: 1px solid var(--row-border);
+      margin-bottom: 6px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: border-color .15s ease;
+    }
+
+    .lb-work:hover { border-color: var(--gold); }
+
+    .lb-work-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--row-title);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+
+    .lb-work-views {
+      flex-shrink: 0;
+      font-size: 11.5px;
+      color: var(--text-faint);
+    }
+
+    .lb-works-note {
+      font-size: 10.5px;
+      color: var(--text-faint);
+      margin: 4px 0 0;
+      text-align: right;
+    }
+
     .lb-sec-loading {
       color: var(--text-faint);
       text-align: center;
@@ -652,6 +740,12 @@ function buildSection() {
       padding: 14px 8px 8px;
       line-height: 1.6;
     }
+
+    /* ---- ডক মেনুতে 🏆 আইকন ---- */
+    .dock-btn[data-accent="leaderboard"]:hover {
+      background: rgba(251, 191, 36, 0.16);
+      color: #fbbf24;
+    }
   `;
   document.head.appendChild(css);
 
@@ -663,20 +757,14 @@ function buildSection() {
         <h2 class="lb-sec-title">🏆 Leaderboard</h2>
         <button class="lb-sec-refresh" id="lbRefreshBtn" title="আপডেট করুন" aria-label="আপডেট করুন">🔄</button>
       </div>
-      <p class="lb-sec-sub">পোস্ট, ভিউ, লাইক আর কমেন্ট মিলিয়ে সেরা লেখক — Top ${TOP_N}</p>
-
-      <div class="lb-tabs">
-        <button class="lb-tab lb-tab-on" id="lbTabScore">⭐ সেরা লেখক</button>
-        <button class="lb-tab" id="lbTabPosts">📝 পোস্ট</button>
-        <button class="lb-tab" id="lbTabViews">👀 ভিউ</button>
-      </div>
+      <p class="lb-sec-sub">পোস্ট, ভিউ আর লাইক মিলিয়ে সেরা লেখক — Top ${TOP_N}</p>
 
       <div class="lb-list" id="lbList">
         <p class="lb-sec-loading">🏆 ডেটা লোড হচ্ছে...</p>
       </div>
 
       <p class="lb-sec-foot">
-        স্কোর = পোস্ট×${WEIGHTS.posts} + ভিউ×${WEIGHTS.views} + লাইক×${WEIGHTS.likes} + কমেন্ট×${WEIGHTS.comments}<br>
+        স্কোর = পোস্ট×${WEIGHTS.posts} + ভিউ×${WEIGHTS.views} + লাইক×${WEIGHTS.likes}<br>
         শুধু <strong>Published</strong> পোস্ট গণনা হয় • সবাই দেখতে পারেন — Login দরকার নেই
       </p>
     </div>
@@ -697,13 +785,6 @@ function buildSection() {
       loadLeaderboard();
     });
 
-  const tabNames = { score: "Score", posts: "Posts", views: "Views" };
-  Object.keys(tabNames).forEach(function (t) {
-    document.getElementById("lbTab" + tabNames[t]).addEventListener("click", function () {
-      setTab(t);
-    });
-  });
-
   /* স্ক্রল করে section-এর কাছে পৌঁছালেই data লোড হবে
      (page load দ্রুত রাখতে — এখনই query না চালাই) */
   if ("IntersectionObserver" in window) {
@@ -721,17 +802,60 @@ function buildSection() {
   return section;
 }
 
-function setTab(tab) {
-  if (lbTab === tab) return;
-  lbTab = tab;
-  const tabNames = { score: "Score", posts: "Posts", views: "Views" };
-  Object.keys(tabNames).forEach(function (t) {
-    const el = document.getElementById("lbTab" + tabNames[t]);
-    if (el) el.classList.toggle("lb-tab-on", t === tab);
+/* =========================
+   DOCK MENU আইকন
+   (main.js-এর ডকে নিজের বাটন যোগ — additive;
+    ট্যাপ করলে নিচের Leaderboard section-এ স্ক্রল হয়)
+========================= */
+
+function addDockButton() {
+  const dockMenu = document.getElementById("dockMenu");
+  if (!dockMenu) return;
+  if (document.getElementById("leaderboardBtn")) return;
+
+  const lbBtn = document.createElement("button");
+  lbBtn.className = "dock-btn";
+  lbBtn.id = "leaderboardBtn";
+  lbBtn.setAttribute("data-accent", "leaderboard");
+  lbBtn.setAttribute("data-tip", "Leaderboard");
+  lbBtn.title = "Leaderboard";
+  lbBtn.innerHTML = `
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 21h8"/>
+      <path d="M12 17v4"/>
+      <path d="M7 4h10v6a5 5 0 0 1-10 0V4Z"/>
+      <path d="M7 6H4a1 1 0 0 0-1 1c0 2.5 1.5 4 4 4.5"/>
+      <path d="M17 6h3a1 1 0 0 1 1 1c0 2.5-1.5 4-4 4.5"/>
+    </svg>
+  `;
+
+  lbBtn.addEventListener("click", function () {
+    const section = document.getElementById("lbSection");
+    if (section) {
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (!lbLoaded) loadLeaderboard();
+    }
   });
-  sortEntries();
-  renderLeaderboard();
+
+  /* Bell-এর পাশে (social cluster-এ) বসানো */
+  const bellBtn = document.getElementById("notifBellBtn");
+  if (bellBtn) {
+    dockMenu.insertBefore(lbBtn, bellBtn);
+  } else {
+    dockMenu.appendChild(lbBtn);
+  }
 }
+
+/* module deferred → main.js (classic) আগে চলেছে,
+   পুরো page DOM তৈরি হয়ে গেছে */
+buildSection();
+addDockButton();
+
+/* public hook — test/preview-এর জন্য */
+globalThis.__leaderboard = {
+  load: loadLeaderboard,
+  scroll: openLeaderboard
+};
 
 function openLeaderboard() {
   const section = document.getElementById("lbSection");
@@ -739,14 +863,3 @@ function openLeaderboard() {
   section.scrollIntoView({ behavior: "smooth", block: "start" });
   if (!lbLoaded) loadLeaderboard();
 }
-
-/* module deferred → main.js (classic) আগে চলেছে,
-   পুরো page DOM তৈরি হয়ে গেছে */
-buildSection();
-
-/* public hook — test/preview-এর জন্য */
-globalThis.__leaderboard = {
-  open: openLeaderboard,
-  load: loadLeaderboard,
-  setTab: setTab
-};
