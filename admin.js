@@ -929,6 +929,13 @@
 
   function switchAdminTab(tab) {
 
+    /* Panel-এর স্ক্রল উপরে — নতুন section দেখা যাবে নিশ্চিত */
+
+    try {
+      adminPanel.scrollTop = 0;
+    } catch (e) {}
+
+
     const pendingDiv =
       document.getElementById(
         "pendingPosts"
@@ -2304,6 +2311,42 @@
   }
 
 
+  /* নতুন rules Firebase-এ Publish না থাকলে
+     বড় ও পরিষ্কার সতর্কবার্তা দেখায় */
+
+  function rulesNotDeployedWarning() {
+
+    return `
+      <div style="
+        background:#450a0a;
+        color:#fecaca;
+        padding:14px;
+        border-radius:10px;
+        font-size:13.5px;
+        line-height:1.7;
+        margin-bottom:15px;
+      ">
+        ⚠️ <strong>নতুন Security Rules এখনো Firebase-এ Publish হয়নি!</strong>
+        <br><br>
+        এটা ছাড়া Moderator system কাজ করবে না।
+        <br><br>
+        <strong>১.</strong> এই লিংকে গিয়ে rules copy করুন
+        <br>
+        <a
+          href="https://raw.githubusercontent.com/tarunner-batighor/tarunner-batighor.github.io/main/firestore.rules"
+          style="color:#7dd3fc;word-break:break-all;font-size:12px;"
+        >
+          raw.githubusercontent.com/tarunner-batighor/tarunner-batighor.github.io/main/firestore.rules
+        </a>
+        <br>
+        <strong>২.</strong> Firebase Console → Firestore → Rules →
+        পুরনো সব মুছে নতুনটা paste → <strong>Publish</strong>
+      </div>
+    `;
+
+  }
+
+
   async function loadModerators() {
 
     const container =
@@ -2474,9 +2517,26 @@
 
       console.error(e);
 
-      container.innerHTML =
-        "❌ লোড করা যায়নি: " +
-        escapeHtml(e.message);
+      const msg =
+        String(e.message || "");
+
+      if (
+        msg.indexOf("PERMISSION_DENIED") !== -1 ||
+        msg.indexOf("permission") !== -1
+      ) {
+
+        container.innerHTML =
+          rulesNotDeployedWarning() +
+          "<p style='color:#94a3b8;font-size:12.5px;'>বিস্তারিত: " +
+          escapeHtml(msg.slice(0, 80)) + "</p>";
+
+      } else {
+
+        container.innerHTML =
+          "❌ লোড করা যায়নি: " +
+          escapeHtml(msg);
+
+      }
 
     }
 
@@ -2725,9 +2785,24 @@
 
           console.error(e);
 
-          box.innerHTML =
-            "❌ খোঁজা যায়নি: " +
-            escapeHtml(e.message);
+          const msg =
+            String(e.message || "");
+
+          if (
+            msg.indexOf("PERMISSION_DENIED") !== -1 ||
+            msg.indexOf("permission") !== -1
+          ) {
+
+            box.innerHTML =
+              rulesNotDeployedWarning();
+
+          } else {
+
+            box.innerHTML =
+              "❌ খোঁজা যায়নি: " +
+              escapeHtml(msg);
+
+          }
 
         }
 
