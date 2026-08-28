@@ -1,16 +1,16 @@
 rules_version = '2';
 
 // ============================================================
-//  তারুণ্যের বাতিঘর — Firestore Security Rules (v4 — Moderator system)
-//  v3-এর ওপর নতুন:
-//  - isModerator(): users/{uid}.role == 'moderator'
-//  - isStaff() = admin OR moderator
-//  - moderator: পোস্ট edit/approve/reject, comment moderation,
-//    notifications + pushQueue create
-//  - role field protection: কেউ নিজে নিজে role বদলাতে/যুক্ত করতে
-//    পারবে না — শুধু Admin (email-based) set করতে পারবে
-//  - Post hard-delete + user management: শুধু Admin
-//  v3-এর বিদ্যমান সব rule অক্ষত রাখা হয়েছে।
+//  তারুণ্যের বাতিঘর — Firestore Security Rules (v5 — Team system)
+//  v4-এর ওপর নতুন:
+//  - isModerator(): role == 'moderator' AND active != false
+//    (Admin Panel থেকে Moderator-কে নিষ্ক্রিয় করা যায়;
+//     নিজে নিজে active flag বদলানো users/{uid} update-এ ব্লক)
+//  - config/{key}: staff পড়তে পারবে, শুধু Admin লিখতে পারবে
+//    (mainAdmin uid/email — moderator activity notification-এর জন্য)
+//  - modActivity: staff activity log লিখতে/পড়তে পারবে,
+//    delete/update শুধু Admin
+//  v3/v4-এর বিদ্যমান সব rule অক্ষত রাখা হয়েছে।
 // ============================================================
 
 service cloud.firestore {
@@ -32,7 +32,9 @@ service cloud.firestore {
     function isModerator() {
       return isSignedIn()
         && get(/databases/$(database)/documents/users/$(request.auth.uid))
-             .data.get('role', null) == 'moderator';
+             .data.get('role', null) == 'moderator'
+        && get(/databases/$(database)/documents/users/$(request.auth.uid))
+             .data.get('active', true) != false;
     }
 
     // Admin + Moderator — একসাথে moderation work করবে
@@ -133,11 +135,11 @@ service cloud.firestore {
       allow list: if isAdmin();
 
       // নিজের profile বদলাতে পারবে —
-      // কিন্তু role field-এ হাত দিতে পারবে না
-      // (privilege escalation ব্লক)
+      // কিন্তু role বা active field-এ হাত দিতে পারবে না
+      // (privilege escalation + নিজে নিজে re-activate ব্লক)
       allow update: if isSignedIn()
         && request.auth.uid == uid
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'active']);
 
       // নতুন account খোলা — শুধু নিজের জন্য, email verify করা,
       // এবং create-তে role field দেওয়া যাবে না
@@ -178,6 +180,27 @@ service cloud.firestore {
     match /pushQueue/{docId} {
       allow create: if isStaff();
       allow read, update, delete: if false;
+    }
+
+    /* Config:
+       - mainAdmin doc (uid/email) — moderator activity
+         notification পাঠানোর সময় admin-কে খুঁজতে লাগে
+       - staff পড়তে পারবে; লিখতে শুধু Admin (নিজের login-এ
+         admin.js নিজেই set করে) */
+    match /config/{key} {
+      allow get: if isStaff();
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    /* Mod Activity Log:
+       - প্রতিটি edit/approve/reject-এর রেকর্ড
+       - staff (admin+moderator) লিখতে ও পড়তে পারবে
+       - delete/update শুধু Admin (log পরিষ্কার করার জন্য) */
+    match /modActivity/{id} {
+      allow create: if isStaff();
+      allow read, list: if isStaff();
+      allow update, delete: if isAdmin();
     }
   }
 }
