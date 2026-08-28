@@ -1,13 +1,16 @@
 rules_version = '2';
 
 // ============================================================
-//  তারুণ্যের বাতিঘর — Firestore Security Rules (v3 — Engagement)
-//  v2-এর ওপর নতুন:
-//  - Posts/{id}/reactions  — নিজের uid-তে নিজের reaction
-//  - Posts/{id}/comments   — login user, নিজের uid, ২-৫০০ অক্ষর
-//  - Posts/{id}.viewCount  — শুধু viewCount field increment (কেউই)
-//  বিদ্যমান সব rule (posts, users, notifications, pushQueue)
-//  অক্ষত — শুধু engagement-এর জন্য নতুন অংশ যোগ হয়েছে।
+//  তারুণ্যের বাতিঘর — Firestore Security Rules (v4 — Moderator system)
+//  v3-এর ওপর নতুন:
+//  - isModerator(): users/{uid}.role == 'moderator'
+//  - isStaff() = admin OR moderator
+//  - moderator: পোস্ট edit/approve/reject, comment moderation,
+//    notifications + pushQueue create
+//  - role field protection: কেউ নিজে নিজে role বদলাতে/যুক্ত করতে
+//    পারবে না — শুধু Admin (email-based) set করতে পারবে
+//  - Post hard-delete + user management: শুধু Admin
+//  v3-এর বিদ্যমান সব rule অক্ষত রাখা হয়েছে।
 // ============================================================
 
 service cloud.firestore {
@@ -23,6 +26,20 @@ service cloud.firestore {
         && request.auth.token.email == 'abdulhadibinmasud775@gmail.com';
     }
 
+    // Moderator — নিজের user doc-এ role == 'moderator'
+    // (এই field শুধু Admin Admin Panel-এর Moderators tab থেকে
+    //  set করে — নিজে নিজে change করা নিচের role protection-এ ব্লক)
+    function isModerator() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid))
+             .data.get('role', null) == 'moderator';
+    }
+
+    // Admin + Moderator — একসাথে moderation work করবে
+    function isStaff() {
+      return isAdmin() || isModerator();
+    }
+
     match /Posts/{postId} {
 
       /* শুধু published পোস্টের engagement public — pending/rejected
@@ -34,10 +51,10 @@ service cloud.firestore {
       // পড়া (read):
       //   - সবাই শুধু 'published' পোস্ট পড়তে পারবে
       //   - লেখক নিজে নিজের পোস্ট (pending/rejected) পড়তে পারবে
-      //   - Admin সব পোস্ট পড়তে পারবেন (deleted সহ)
+      //   - Admin ও Moderator সব পোস্ট পড়তে পারবে
       allow get, list: if resource.data.status == 'published'
         || (isSignedIn() && resource.data.authorUid == request.auth.uid)
-        || isAdmin();
+        || isStaff();
 
       // নতুন পোস্ট জমা দেওয়া (create):
       //   - শুধু লগইন করা user (Google Login)
@@ -58,13 +75,15 @@ service cloud.firestore {
         && request.resource.data.category.size() <= 50;
 
       // পোস্ট বদলানো (update):
-      //   - Admin: যেকোনো field
+      //   - Admin + Moderator: যেকোনো field
+      //     (edit / approve / reject / audit field)
       //   - কেউই (login ছাড়াও): শুধু viewCount field —
       //     বাকি field-এ হাত দিলে deny (view count guard)
-      allow update: if isAdmin()
+      allow update: if isStaff()
         || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount']);
 
-      // মোছা (delete): শুধু Admin
+      // মোছা (delete): শুধু Admin —
+      // moderator পোস্ট হার্ড-ডিলিট করতে পারবে না
       allow delete: if isAdmin();
 
       /* ---- Reaction:
@@ -88,7 +107,7 @@ service cloud.firestore {
          - শুধু login করা user লিখতে পারবে
          - authorUid অবশ্যই নিজের uid
          - ২-৫০০ অক্ষর, authorName ১-৮০ অক্ষর
-         - update/delete: শুধু Admin (মডারেশন) */
+         - update/delete: Admin + Moderator (মডারেশন) */
       match /comments/{cid} {
         allow read: if parentIsPublished();
         allow create: if isSignedIn()
@@ -100,31 +119,47 @@ service cloud.firestore {
           && request.resource.data.text is string
           && request.resource.data.text.size() >= 2
           && request.resource.data.text.size() <= 500;
-        allow update: if isAdmin();
-        allow delete: if isAdmin();
+        allow update: if isStaff();
+        allow delete: if isStaff();
       }
     }
 
     match /users/{uid} {
 
-      // নিজের account — শুধু নিজেকে পড়তে/বাদলাতে পারবে
-      allow get, update: if isSignedIn() && request.auth.uid == uid;
+      // নিজের account — শুধু নিজেকে পড়তে পারবে
+      allow get: if isSignedIn() && request.auth.uid == uid;
 
-      // নতুন account খোলা — শুধু নিজের জন্য, email verify করা
+      // পুরো users তালিকা — শুধু Admin (moderator খোঁজার জন্য)
+      allow list: if isAdmin();
+
+      // নিজের profile বদলাতে পারবে —
+      // কিন্তু role field-এ হাত দিতে পারবে না
+      // (privilege escalation ব্লক)
+      allow update: if isSignedIn()
+        && request.auth.uid == uid
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+
+      // নতুন account খোলা — শুধু নিজের জন্য, email verify করা,
+      // এবং create-তে role field দেওয়া যাবে না
       allow create: if isSignedIn()
         && request.auth.uid == uid
-        && request.resource.data.email == request.auth.token.email;
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.get('role', null) == null;
+
+      // Admin: অন্যের user doc পড়া/বদলানো
+      // (moderator role set/remove-এর জন্য)
+      allow get, update: if isAdmin();
 
       allow delete: if false;
 
       // Notification:
       //   - মালিক পড়তে / read-mark করতে পারবে
-      //   - create শুধু Cloud Function (admin SDK) পারবে
+      //   - create: Admin/Moderator panel (client)
+      //     + Cloud Function (service account)
       match /notifications/{notifId} {
         allow get, list, update: if isSignedIn() && request.auth.uid == uid;
         allow delete: if false;
-        /* create: Admin panel (client) + Cloud Function (service account) */
-        allow create: if isAdmin();
+        allow create: if isStaff();
       }
 
       // Push token:
@@ -136,11 +171,12 @@ service cloud.firestore {
     }
 
     /* Push Queue:
-       - Admin accept/reject করলে এই queue-তে item আসে (client)
+       - Admin/Moderator accept/reject করলে এই queue-তে
+         item আসে (client)
        - পড়া/লিখা (push + cleanup) শুধু service account
          (GitHub Actions / Cloud Function) করবে */
     match /pushQueue/{docId} {
-      allow create: if isAdmin();
+      allow create: if isStaff();
       allow read, update, delete: if false;
     }
   }
