@@ -151,3 +151,58 @@ Role Firestore-এর `users/{uid}` doc-এর `role` field-এ থাকে।
 - `functions/index.js` (Cloud Function) এই feature-এর জন্য **বদলাতে হবে
   না** — সেটা status change trigger-এ push পাঠায়, কীভাবে approval
   হলো তাতে তার ধরবার কিছু নেই
+
+---
+
+# 👥 Team System — v5 (28 Aug 2026)
+
+v4-এর ওপর নতুন ৫টা feature — কোড লাইভ, **কিন্তু নতুন rules-এ
+Firebase-এ Publish করতে হবে** (নিচে দেওয়া আছে)।
+
+## নতুন যা যা আছে
+
+| নতুন feature | কীভাবে কাজ করে |
+|---|---|
+| 🟢🔴 **সক্রিয় / নিষ্ক্রিয়** | Moderators tab-এ প্রতি জনের পাশে **🔴 নিষ্ক্রিয় করুন** button। নিষ্ক্রিয় করলে সে আর Moderator Panel খুলতে পারবে না (refresh-এই বন্ধ)। পরে **🟢 সক্রিয় করুন** চাপলেই আবার চালু। নিজে নিজে আবার চালু করা যাবে না (rules-এ block) |
+| 🚫 **Reject-এর কারণ** | Reject চাপলে এখন একটি box আসবে — কারণ **এককথায় লেখা যাবে**। কারণ দিলে লেখকের notification-এ ও পোস্টের `rejectReason`-এ সেটা থাকবে; না দিলে আগের মতোই simple reject |
+| ⏳ **কিছু একাধিক Moderator একসাথে কাজ করলে** | কেউ কোনো pending পোস্ট-এ Edit চাপলে সে পোস্টে **⏳ Currently being reviewed by [নাম]** badge দিবে (১০ মিনিটের জন্য)। নিজের হলে নীল: "আপনি এই পোস্টটি review করছেন"। Publish/Reject/Edit শেষে badge বাদ |
+| 📜 **History tab** | Admin ও Moderator দুজনেরই panel-এ **📜 History** tab — কারা কবে কোন পোস্ট Publish / Reject / Edit করেছে (সর্বশেষ ৩০টা)। Reject-এর কারণ থাকলে সেটাও দেখা যাবে |
+| 🔔 **Admin-কে activity notification** | কোনো Moderator publish/reject/edit করলে Main Admin-এর **Bell-এ** notification যায় ("🛡️ [নাম] Published করেছেন: ...") |
+
+## ⚠️ এখন করুন — নতুন rules Publish (১ মিনিট)
+
+1. https://console.firebase.google.com/project/tarunner-batighor/firestore/rules
+2. পুরনো rules সব select করে **delete**
+3. **এই raw link-এর** contents paste করুন:
+   https://raw.githubusercontent.com/tarunner-batighor/tarunner-batighor.github.io/main/firestore.rules
+   (repo-র `firestore.rules` file — v5)
+4. **Publish** চাপুন
+
+> ⚠️ Rules **চ্যাট থেকে copy করবেন না** — chat `&&`-কে `&amp;&amp;`
+> করে ফেলে, তাহলে rules ভুল হবে। শুধু **raw link** থেকে।
+
+## নতুন ডেটা fields (স্বয়ংক্রিয়)
+
+| Field | কোথায় | কী মানে |
+|---|---|---|
+| `active` | `users/{uid}` | `false` = নিষ্ক্রিয় moderator (নেই/true = সক্রিয়) |
+| `rejectReason` | `Posts/{id}` | reject-এর কারণ (দিলে) |
+| `reviewedBy` / `reviewedAt` | `Posts/{id}` | এখন কে review করছে (soft marker) |
+| `config/mainAdmin` | `config` | Admin-এর uid/email — activity notification পাঠানোর জন্য |
+| `modActivity` | collection | প্রতি publish/reject/edit-এর log entry |
+
+## সীমাবদ্ধতা (জানিয়ে রাখা)
+
+- **ফোনে push notification** Moderator-এর কাজের জন্য যায় না —
+  শুধু Admin-এর **Bell-এ** (site-এর ভিতরে) যায়। কারণ: ফোনের push
+  title-এ "পোস্ট অনুমোদিত/অনুমোদিত হয়নি" লেখা থাকে (লেখকের জন্য),
+  তাই admin activity-তে ভুল title দেখিয়ে যেত। ভবিষ্যতে চাইলে
+  আলাদা title type যোগ করা যাবে
+- **প্রতি Moderator-এ আলাদা permission** (যেমন: কেউ শুধু Reject
+  পারবে) — এখন করা হয়নি। এখন moderator-এর ক্ষমতা সমান (edit +
+  publish + reject), সাথে active/inactive switch। চাইলে পরে
+  field-ভিত্তিক permission যোগ করা যাবে
+- **⏳ review badge** soft hint — ১০ মিনিট পর নিজে থেকে লুকায়,
+  দুজনকে একই পোস্ট ধরে রাখার জন্য hard lock নয়
+- **History** শেষ ৩০টা activity দেখায় (পুরনোটা log-এই থাকে,
+  শুধু তালিকায় ৩০টার বেশি দেখানো হয় না)
