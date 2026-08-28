@@ -13,7 +13,7 @@
    - self-contained: main.js-এ কোনো পরিবর্তন নেই
 ============================================================ */
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore,
   collection,
@@ -29,12 +29,14 @@ const firebaseConfig = {
   authDomain: "tarunner-batighor.firebaseapp.com",
   projectId: "tarunner-batighor",
   storageBucket: "tarunner-batighor.firebasestorage.app",
-  messagingSenderId: "4949259714",
+  messagingSenderId: "494925974714",
   appId: "1:4949259714:web:7f2ec193de3c8ee03b0683",
   measurementId: "G-Y9L1BG62BL"
 };
 
-const app = initializeApp(firebaseConfig);
+/* auth.js/admin.js আগে initializeApp করে থাকলে same app ব্যবহার
+   (duplicate-app error রোধ) */
+const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* =========================
