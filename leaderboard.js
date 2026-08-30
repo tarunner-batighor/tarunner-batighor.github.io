@@ -352,8 +352,8 @@ function renderLeaderboard() {
     const avatarSize = top ? 48 : 42;
 
     return `
-      <div class="lb-row-wrap">
-        <div class="lb-row lb-row-tap" data-uid="${escapeHtml(e.uid)}" style="${cardStyle}">
+      <div class="lb-row-wrap" style="${cardStyle}">
+        <div class="lb-row lb-row-tap" data-uid="${escapeHtml(e.uid)}">
           <div class="lb-rank">${rankBadge(rank)}</div>
 
           <div class="lb-avatar-wrap" style="${avatarRing}">
@@ -482,26 +482,26 @@ function buildSection() {
 
     .lb-list { margin-top: 16px; }
 
-    .lb-row-wrap:last-child .lb-row { margin-bottom: 0; }
-
-    .lb-row {
-      display: flex;
-      align-items: center;
-      gap: 11px;
-      border-radius: 14px;
-      padding: 11px 12px;
-      margin-bottom: 10px;
+    .lb-row-wrap {
       background: var(--row-bg);
       border: 1px solid var(--row-border);
-    }
-
-    .lb-row-tap {
+      border-radius: 14px;
+      margin-bottom: 10px;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
       transition: transform .12s ease;
     }
 
-    .lb-row-tap:active { transform: scale(0.985); }
+    .lb-row-wrap:last-child { margin-bottom: 0; }
+
+    .lb-row-wrap:active { transform: scale(0.985); }
+
+    .lb-row {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 11px 12px;
+    }
 
     .lb-rank {
       width: 34px;
@@ -632,11 +632,9 @@ function buildSection() {
     /* ---- নাম ট্যাপে খোলে: সেরা লেখা ---- */
     .lb-works {
       display: none;
-      margin: -4px 12px 12px;
-      padding: 12px;
-      background: var(--row-bg);
-      border: 1px dashed var(--row-border);
-      border-radius: 12px;
+      margin: 0;
+      padding: 10px 12px 12px;
+      border-top: 1px solid var(--row-border);
     }
 
     .lb-row-wrap.lb-open .lb-works { display: block; }
