@@ -319,6 +319,55 @@ function animateScores(root) {
   });
 }
 
+/* ---- "আমাদের খাতা" — মোট পোস্ট/লেখক/ভিউ/লাইক ---- */
+function renderStats() {
+  const stats = document.getElementById("lbStats");
+  if (!stats) return;
+
+  const sum = function (key) {
+    return lbEntries.reduce(function (s, e) { return s + (e[key] || 0); }, 0);
+  };
+
+  const items = [
+    { icon: "📝", label: "মোট পোস্ট", val: sum("posts") },
+    { icon: "✍️", label: "মোট লেখক", val: lbEntries.length },
+    { icon: "👀", label: "মোট ভিউ", val: sum("views") },
+    { icon: "❤️", label: "মোট লাইক", val: sum("likes") }
+  ];
+
+  stats.innerHTML = items.map(function (it, i) {
+    return (
+      '<div class="lb-stat" style="animation-delay:' + (i * 60) + 'ms">' +
+      '<span class="lb-stat-icon">' + it.icon + '</span>' +
+      '<span class="lb-stat-val" data-count="' + it.val + '">' + bengaliNum(it.val) + '</span>' +
+      '<span class="lb-stat-lbl">' + it.label + '</span>' +
+      '</div>'
+    );
+  }).join("");
+  stats.style.display = "";
+
+  const reduced =
+    window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  stats.querySelectorAll("[data-count]").forEach(function (el, i) {
+    const target = parseInt(el.getAttribute("data-count") || "0", 10);
+    if (reduced) {
+      el.textContent = bengaliNum(target);
+      return;
+    }
+    el.textContent = bengaliNum(0);
+    const dur = 900 + i * 90;
+    const t0 = performance.now();
+    function tick(now) {
+      const k = Math.min(1, (now - t0) / dur);
+      const eased = 1 - Math.pow(1 - k, 3);
+      el.textContent = bengaliNum(Math.round(target * eased));
+      if (k < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
 function worksHtml(e) {
   if (!e.bestPosts || !e.bestPosts.length) return "";
   return `
@@ -432,6 +481,9 @@ function renderLeaderboard() {
   /* ---- score 0 থেকে count-up হয় (subtle professional touch) ---- */
   animateScores(list);
 
+  /* ---- "আমাদের খাতা" — সাইটের মোট পরিসংখ্যান ---- */
+  renderStats();
+
   /* ---- ফুটারে "সর্বশেষ আপডেট" সময় ---- */
   const up = document.getElementById("lbUpdated");
   if (up) {
@@ -543,6 +595,44 @@ function buildSection() {
     }
 
     .lb-list { margin-top: 16px; }
+
+    .lb-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    @media (min-width: 500px) {
+      .lb-stats { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    .lb-stat {
+      background: var(--row-bg);
+      border: 1px solid var(--row-border);
+      border-radius: 14px;
+      padding: 12px 8px;
+      text-align: center;
+      animation: lbRowIn .45s ease backwards;
+    }
+
+    .lb-stat-icon { font-size: 19px; display: block; }
+
+    .lb-stat-val {
+      font-size: 21px;
+      font-weight: 800;
+      color: var(--gold);
+      display: block;
+      margin-top: 3px;
+      line-height: 1.2;
+    }
+
+    .lb-stat-lbl {
+      font-size: 11px;
+      color: var(--text-faint);
+      display: block;
+      margin-top: 2px;
+    }
 
     @keyframes lbRowIn {
       from { opacity: 0; transform: translateY(12px); }
@@ -849,6 +939,7 @@ function buildSection() {
   const section = document.createElement("section");
   section.id = "lbSection";
   section.innerHTML = `
+    <div class="lb-stats" id="lbStats" style="display:none"></div>
     <div class="lb-sec-card">
       <div class="lb-sec-top">
         <h2 class="lb-sec-title">🏆 Leaderboard</h2>
