@@ -220,3 +220,13 @@ async function peRenderRelated() {
 
 window.addEventListener("hashchange", peRenderRelated);
 peRenderRelated();
+
+/* Back button uses replaceState (no hashchange event) —
+   so periodically poll: close the bar, reset related */
+setInterval(function () {
+  peUpdateBar();
+  if (!/^#post\/[A-Za-z0-9_-]+/.test(location.hash) && peRelatedFor) {
+    peRelatedFor = null;
+    peRemoveRelated();
+  }
+}, 400);
