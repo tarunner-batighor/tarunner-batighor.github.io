@@ -132,6 +132,9 @@ async function loadLeaderboard() {
   if (lbLoading) return;
   lbLoading = true;
 
+  const lbRefresh = document.getElementById("lbRefreshBtn");
+  if (lbRefresh) lbRefresh.classList.add("lb-spin");
+
   const list = document.getElementById("lbList");
   if (list) {
     list.innerHTML =
@@ -249,6 +252,7 @@ async function loadLeaderboard() {
 
     renderLeaderboard();
     lbLoaded = true;
+    if (lbRefresh) lbRefresh.classList.remove("lb-spin");
 
   } catch (e) {
     console.error("Leaderboard load failed:", e);
@@ -268,6 +272,7 @@ async function loadLeaderboard() {
     }
   }
 
+  if (lbRefresh) lbRefresh.classList.remove("lb-spin");
   lbLoading = false;
 }
 
@@ -289,19 +294,48 @@ function scoreColor(rank) {
   return "var(--row-title)";
 }
 
+/* ---- score count-up: 0 থেকে final-এ উঠে আসে ---- */
+function animateScores(root) {
+  const reduced =
+    window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  root.querySelectorAll(".lb-score-val").forEach(function (el, i) {
+    const target = parseInt(el.getAttribute("data-score") || "0", 10);
+    if (reduced) {
+      el.textContent = bengaliNum(target);
+      return;
+    }
+    el.textContent = bengaliNum(0);
+    const dur = 700 + i * 45;
+    const t0 = performance.now();
+    function tick(now) {
+      const k = Math.min(1, (now - t0) / dur);
+      const eased = 1 - Math.pow(1 - k, 3);
+      el.textContent = bengaliNum(Math.round(target * eased));
+      if (k < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
 function worksHtml(e) {
   if (!e.bestPosts || !e.bestPosts.length) return "";
   return `
     <div class="lb-works" data-works-for="${escapeHtml(e.uid)}">
-      <p class="lb-works-head">📚 ${escapeHtml(e.name)}-এর সেরা লেখা</p>
-      ${e.bestPosts.map(function (p) {
-        return `
-        <div class="lb-work" data-post-id="${escapeHtml(p.id)}">
-          <span class="lb-work-title">${escapeHtml(p.title)}</span>
-          <span class="lb-work-views">👀 ${bengaliNum(p.views)}</span>
-        </div>`;
-      }).join("")}
-      <p class="lb-works-note">টাইটেলে ট্যাপ করে পড়া যাবে</p>
+      <div class="lb-works-clip">
+        <div class="lb-works-inner">
+          <p class="lb-works-head">📚 ${escapeHtml(e.name)}-এর সেরা লেখা</p>
+          ${e.bestPosts.map(function (p) {
+            return `
+            <div class="lb-work" data-post-id="${escapeHtml(p.id)}">
+              <span class="lb-work-title">${escapeHtml(p.title)}</span>
+              <span class="lb-work-views">👀 ${bengaliNum(p.views)}</span>
+            </div>`;
+          }).join("")}
+          <p class="lb-works-note">টাইটেলে ট্যাপ করে পড়া যাবে</p>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -352,8 +386,8 @@ function renderLeaderboard() {
     const avatarSize = top ? 48 : 42;
 
     return `
-      <div class="lb-row-wrap" style="${cardStyle}">
-        <div class="lb-row lb-row-tap" data-uid="${escapeHtml(e.uid)}">
+      <div class="lb-row-wrap${rank === 1 ? " lb-rank1" : ""}" style="${cardStyle}animation-delay:${i * 45}ms">
+        <div class="lb-row lb-row-tap" data-uid="${escapeHtml(e.uid)}" role="button" aria-expanded="false">
           <div class="lb-rank">${rankBadge(rank)}</div>
 
           <div class="lb-avatar-wrap" style="${avatarRing}">
@@ -375,7 +409,7 @@ function renderLeaderboard() {
           </div>
 
           <div class="lb-score">
-            <span class="lb-score-val" style="color:${scoreColor(rank)};">${bengaliNum(e.score)}</span>
+            <span class="lb-score-val" data-score="${e.score}" style="color:${scoreColor(rank)};">${bengaliNum(e.score)}</span>
             <span class="lb-score-lbl">স্কোর</span>
           </div>
 
@@ -390,9 +424,26 @@ function renderLeaderboard() {
   list.querySelectorAll(".lb-row-tap").forEach(function (row) {
     row.addEventListener("click", function () {
       const wrap = row.parentElement;
-      wrap.classList.toggle("lb-open");
+      const open = wrap.classList.toggle("lb-open");
+      row.setAttribute("aria-expanded", open ? "true" : "false");
     });
   });
+
+  /* ---- score 0 থেকে count-up হয় (subtle professional touch) ---- */
+  animateScores(list);
+
+  /* ---- ফুটারে "সর্বশেষ আপডেট" সময় ---- */
+  const up = document.getElementById("lbUpdated");
+  if (up) {
+    const d = new Date();
+    let t = "";
+    try {
+      t = d.toLocaleString("bn-BD", { day: "numeric", month: "long", hour: "numeric", minute: "2-digit" });
+    } catch (e) {
+      t = bengaliNum(d.getDate()) + "/" + bengaliNum(d.getMonth() + 1) + "/" + d.getFullYear();
+    }
+    up.textContent = "সর্বশেষ আপডেট: " + t;
+  }
 
   /* ---- work tap → পোস্ট খোলে (main.js-এর #post/ mechanism) ---- */
   list.querySelectorAll(".lb-work").forEach(function (w) {
@@ -472,6 +523,17 @@ function buildSection() {
       transform: translateY(-50%) rotate(90deg);
     }
 
+    @keyframes lbSpin {
+      from { transform: translateY(-50%) rotate(0deg); }
+      to { transform: translateY(-50%) rotate(360deg); }
+    }
+
+    .lb-sec-refresh.lb-spin {
+      animation: lbSpin 1s linear infinite;
+      color: var(--gold);
+      border-color: var(--gold);
+    }
+
     .lb-sec-sub {
       color: var(--text-faint);
       font-size: 12.5px;
@@ -482,6 +544,16 @@ function buildSection() {
 
     .lb-list { margin-top: 16px; }
 
+    @keyframes lbRowIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes lbGlow {
+      0%, 100% { box-shadow: 0 0 18px rgba(251, 191, 36, 0.14); }
+      50% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.34); }
+    }
+
     .lb-row-wrap {
       background: var(--row-bg);
       border: 1px solid var(--row-border);
@@ -489,12 +561,24 @@ function buildSection() {
       margin-bottom: 10px;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
-      transition: transform .12s ease;
+      transition: transform .12s ease, box-shadow .12s ease;
+      animation: lbRowIn .45s ease backwards;
     }
 
     .lb-row-wrap:last-child { margin-bottom: 0; }
 
     .lb-row-wrap:active { transform: scale(0.985); }
+
+    .lb-row-wrap.lb-rank1 {
+      animation: lbRowIn .45s ease backwards, lbGlow 3.2s ease-in-out 1.2s infinite;
+    }
+
+    @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+      .lb-row-wrap:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 24px rgba(2, 6, 23, 0.12);
+      }
+    }
 
     .lb-row {
       display: flex;
@@ -631,13 +715,23 @@ function buildSection() {
 
     /* ---- নাম ট্যাপে খোলে: সেরা লেখা ---- */
     .lb-works {
-      display: none;
-      margin: 0;
-      padding: 10px 12px 12px;
-      border-top: 1px solid var(--row-border);
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows .28s ease;
     }
 
-    .lb-row-wrap.lb-open .lb-works { display: block; }
+    .lb-works-clip {
+      overflow: hidden;
+      min-height: 0;
+      border-top: 1px solid transparent;
+      transition: border-color .28s ease;
+    }
+
+    .lb-works-inner { padding: 10px 12px 12px; }
+
+    .lb-row-wrap.lb-open .lb-works { grid-template-rows: 1fr; }
+
+    .lb-row-wrap.lb-open .lb-works-clip { border-color: var(--row-border); }
 
     .lb-works-head {
       font-size: 13px;
@@ -739,6 +833,11 @@ function buildSection() {
       line-height: 1.6;
     }
 
+    @media (prefers-reduced-motion: reduce) {
+      .lb-row-wrap, .lb-row-wrap.lb-rank1 { animation: none; }
+      .lb-works, .lb-works-clip { transition: none; }
+    }
+
     /* ---- ডক মেনুতে 🏆 আইকন ---- */
     .dock-btn[data-accent="leaderboard"]:hover {
       background: rgba(251, 191, 36, 0.16);
@@ -763,7 +862,8 @@ function buildSection() {
 
       <p class="lb-sec-foot">
         স্কোর = পোস্ট×${WEIGHTS.posts} + ভিউ×${WEIGHTS.views} + লাইক×${WEIGHTS.likes}<br>
-        শুধু <strong>Published</strong> পোস্ট গণনা হয় • সবাই দেখতে পারেন — Login দরকার নেই
+        শুধু <strong>Published</strong> পোস্ট গণনা হয় • সবাই দেখতে পারেন — Login দরকার নেই<br>
+        <span id="lbUpdated"></span>
       </p>
     </div>
   `;
