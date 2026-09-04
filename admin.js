@@ -131,20 +131,48 @@
 
     try {
 
-      await addDoc(
-        collection(db, "Posts"),
-        {
+      const newPostRef =
+        await addDoc(
+          collection(db, "Posts"),
+          {
+            title: result.title,
+            content: result.content,
+            category: result.category,
+            status: "pending",
+            authorUid: user.uid,
+            authorName: user.displayName || "",
+            authorEmail: user.email || "",
+            authorPhotoURL: user.photoURL || "",
+            createdAt: serverTimestamp()
+          }
+        );
+
+
+      /* নতুন সাবমিশন → সব Staff (Admin + Moderator)-কে
+         in-site notification (bell-এ)
+         — ব্যর্থ হলেও submission ভাঙবে না */
+
+      try {
+
+        const snMod =
+          await import("./staff-notify.js");
+
+        await snMod.notifyStaffOfSubmission({
+          postId: newPostRef.id,
           title: result.title,
-          content: result.content,
-          category: result.category,
-          status: "pending",
           authorUid: user.uid,
-          authorName: user.displayName || "",
-          authorEmail: user.email || "",
-          authorPhotoURL: user.photoURL || "",
-          createdAt: serverTimestamp()
-        }
-      );
+          authorName: user.displayName || user.email || "",
+          category: result.category
+        });
+
+      } catch (snErr) {
+
+        console.warn(
+          "staff notify failed:",
+          snErr.message
+        );
+
+      }
 
 
       alert(
@@ -1436,6 +1464,26 @@
         ).catch(function (e) {
           console.warn(
             "mainAdmin config save failed:",
+            e.message
+          );
+        });
+
+
+        /* staffList baseline — user সাবমিশন notification-এর
+           fan-out-এর জন্য (moderator থাকলে loadModerators-এ
+           আবার update হয়) */
+
+        setDoc(
+          doc(db, "config", "staffList"),
+          {
+            uids: [user.uid],
+            names: { [user.uid]: user.displayName || user.email },
+            updatedAt: serverTimestamp()
+          },
+          { merge: false }
+        ).catch(function (e) {
+          console.warn(
+            "staffList save failed:",
             e.message
           );
         });
@@ -3144,6 +3192,49 @@
             )
           )
         );
+
+
+      /* staffList update — নতুন সাবমিশন notification
+         fan-out-এর জন্য (admin uid + সক্রিয় moderators) */
+
+      const adminUser =
+        auth.currentUser;
+
+      if (adminUser) {
+
+        const modUids = [];
+        const modNames = {};
+
+        snap.forEach(function (uDoc) {
+          const u = uDoc.data();
+          if (u.active === false) return;
+          modUids.push(uDoc.id);
+          modNames[uDoc.id] =
+            u.displayName || u.email || uDoc.id;
+        });
+
+        setDoc(
+          doc(db, "config", "staffList"),
+          {
+            uids: [adminUser.uid].concat(modUids),
+            names: Object.assign(
+              {
+                [adminUser.uid]:
+                  adminUser.displayName || adminUser.email
+              },
+              modNames
+            ),
+            updatedAt: serverTimestamp()
+          },
+          { merge: false }
+        ).catch(function (e) {
+          console.warn(
+            "staffList save failed:",
+            e.message
+          );
+        });
+
+      }
 
 
       if (snap.empty) {
