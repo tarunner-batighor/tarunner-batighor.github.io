@@ -1,7 +1,13 @@
 rules_version = '2';
 
 // ============================================================
-//  তারুণ্যের বাতিঘর — Firestore Security Rules (v5 — Team system)
+//  তারুণ্যের বাতিঘর — Firestore Security Rules (v5.2 — Team system)
+//  v5.2-এ নতুন (submission notification):
+//  - config/staffList: public read (শুধু uid+name — email রাখা যাবে না)
+//    user সাবমিশন-এ staff-দের notification fan-out-এর জন্য
+//  - users/{uid}/notifications create-এ নতুন শাখা: login user
+//    নিজের submission-এর জন্য শুধু STAFF target-এ notification doc
+//    create করতে পারবে (strict shape + authorUid = নিজের uid)
 //  v4-এর ওপর নতুন:
 //  - isModerator(): role == 'moderator' AND active != false
 //    (Admin Panel থেকে Moderator-কে নিষ্ক্রিয় করা যায়;
@@ -40,6 +46,13 @@ service cloud.firestore {
     // Admin + Moderator — একসাথে moderation work করবে
     function isStaff() {
       return isAdmin() || isModerator();
+    }
+
+    // নতুন submission notification fan-out-এর জন্য:
+    // target uid কি staff (role field, অথবা config/mainAdmin-এর uid)
+    function isStaffTarget(target) {
+      return get(/databases/$(database)/documents/users/$(target)).data.get('role', null) in ['admin', 'moderator']
+        || get(/databases/$(database)/documents/config/mainAdmin).data.get('uid', null) == target;
     }
 
     match /Posts/{postId} {
@@ -161,7 +174,21 @@ service cloud.firestore {
       match /notifications/{notifId} {
         allow get, list, update: if isSignedIn() && request.auth.uid == uid;
         allow delete: if false;
-        allow create: if isStaff();
+        allow create: if isStaff()
+          // নতুন submission → staff-দের notification (user নিজে পাঠায়):
+          // শুধু staff target, শুধু নিজের uid, strict shape
+          || (isSignedIn()
+              && request.resource.data.type == 'approved'
+              && request.resource.data.get('submission', false) == true
+              && request.resource.data.authorUid == request.auth.uid
+              && request.resource.data.postId is string
+              && request.resource.data.postId.size() > 0
+              && request.resource.data.postId.size() <= 64
+              && request.resource.data.postTitle is string
+              && request.resource.data.postTitle.size() <= 300
+              && request.resource.data.message is string
+              && request.resource.data.message.size() <= 400
+              && isStaffTarget(uid));
       }
 
       // Push token:
@@ -188,7 +215,9 @@ service cloud.firestore {
        - staff পড়তে পারবে; লিখতে শুধু Admin (নিজের login-এ
          admin.js নিজেই set করে) */
     match /config/{key} {
-      allow get: if isStaff();
+      // staffList public read — submission notification fan-out-এর জন্য
+      // (শুধু uid+name রাখা যাবে; email অন্য তথ্য নয়)
+      allow get: if isStaff() || key == 'staffList';
       allow create, update: if isAdmin();
       allow delete: if false;
     }
