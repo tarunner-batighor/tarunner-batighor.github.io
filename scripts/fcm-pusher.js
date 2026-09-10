@@ -91,8 +91,8 @@ async function main() {
       if (tokens.length > 0) {
         const pushTitle =
           q.type === "approved"
-            ? "✅ পোস্ট অনুমোদিত হয়েছে"
-            : "❌ পোস্ট অনুমোদিত হয়নি";
+            ? "পোস্ট অনুমোদিত হয়েছে"
+            : "পোস্ট অনুমোদিত হয়নি";
         const body = q.message || "";
 
         const results = await messaging.sendEachForMulticast({

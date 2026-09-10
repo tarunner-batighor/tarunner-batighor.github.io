@@ -297,7 +297,7 @@ export async function notifyAuthorDecision({ post, decision, reason, staff }) {
   if (!post.authorUid) return;
   const approved = decision === "approved";
   const message = approved
-    ? "✅ আপনার লেখাটি প্রকাশিত হয়েছে: «" + post.title + "»"
+    ? "আপনার লেখাটি প্রকাশিত হয়েছে: «" + post.title + "»"
     : "দুঃখিত, আপনার লেখাটি অনুমোদিত হয়নি।" + (reason ? "\nকারণ: " + reason : "");
 
   const ref = await addDoc(collection(db, "users", post.authorUid, "notifications"), {
@@ -322,7 +322,7 @@ export async function notifyAuthorDecision({ post, decision, reason, staff }) {
       message: approved
         ? "আপনার পোস্টটি অনুমোদিত হয়েছে এবং এখন ওয়েবসাইটে প্রকাশিত হয়েছে।"
         : (reason ? "পোস্টটি অনুমোদিত হয়নি। কারণ: " + reason : "আপনার পোস্টটি অনুমোদিত হয়নি।"),
-      title: approved ? "✅ পোস্ট অনুমোদিত হয়েছে" : "❌ পোস্ট অনুমোদিত হয়নি",
+      title: approved ? "আপনার পোস্ট অনুমোদিত হয়েছে" : "পোস্ট অনুমোদিত হয়নি",
       body: approved ? (post.title || "") : (reason || "বিস্তারিত অ্যাকাউন্টে দেখুন"),
       url: "/#/post/" + post.id,
       createdAt: serverTimestamp()
@@ -338,7 +338,7 @@ export async function notifyStaffOfSubmission({ postId, title, authorUid, author
     const uids = Array.isArray(cfgSnap.data().uids) ? cfgSnap.data().uids : [];
     const targets = uids.filter(function (u) { return u && u !== authorUid; });
     const safeTitle = String(title || "").slice(0, 150);
-    const msg = "📥 নতুন লেখা জমা হয়েছে: «" + safeTitle + "»" +
+    const msg = "নতুন লেখা জমা হয়েছে: «" + safeTitle + "»" +
       (authorName ? " — " + String(authorName).slice(0, 60) : "");
 
     for (const uid of targets) {

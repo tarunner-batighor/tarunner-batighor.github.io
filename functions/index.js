@@ -90,8 +90,8 @@ exports.onPostStatusChange = functions.firestore
                 let ok = 0;
                 if (tokens.length > 0) {
                     const pushTitle = type === "approved"
-                        ? "✅ পোস্ট অনুমোদিত হয়েছে"
-                        : "❌ পোস্ট অনুমোদিত হয়নি";
+                        ? "পোস্ট অনুমোদিত হয়েছে"
+                        : "পোস্ট অনুমোদিত হয়নি";
                     const results = await admin.messaging().sendEachForMulticast({
                         tokens: tokens,
                         notification: { title: pushTitle, body: q.message || "" },
