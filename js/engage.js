@@ -8,6 +8,8 @@ import {
   getReactions, setMyReaction, getComments, addComment, deleteComment
 } from "./store.js";
 import { googleSignIn, isStaff } from "./fb.js";
+import { uiIcon } from "./icons.js";
+const I = uiIcon;
 
 export const REACTIONS = [
   { emoji: "❤️", label: "ভালোবাসা" },
@@ -40,7 +42,7 @@ export async function renderEngagement(container, post, user) {
     '<div class="engage-card" id="engCard">' +
       '<div class="react-row" id="reactRow"><span class="loader" style="border-top-color:var(--gold)"></span></div>' +
       '<div class="eng-divider"></div>' +
-      '<div class="comm-head">💬 মন্তব্য <span id="commCount" style="color:var(--gold)">(০)</span></div>' +
+      '<div class="comm-head">' + I("comment", 17) + ' মন্তব্য <span id="commCount" style="color:var(--gold)">(০)</span></div>' +
       '<div id="commList"></div>' +
       '<div class="comm-form" id="commForm"></div>' +
       '<div class="eng-stats" id="engStats"></div>' +
@@ -51,10 +53,13 @@ export async function renderEngagement(container, post, user) {
     const [r, c] = await Promise.all([getReactions(post.id), getComments(post.id)]);
     data.byEmoji = r.byEmoji; data.mine = r.mine; data.comments = c;
   } catch (e) {
-    container.querySelector("#engCard").innerHTML =
-      '<div class="empty-state"><div class="es-icon">📡</div><p>রিয়্যাকশন লোড করা যায়নি। ইন্টারনেট দেখুন।</p></div>';
+    if (!container.isConnected) return;
+    const ec = container.querySelector("#engCard");
+    if (ec) ec.innerHTML =
+      '<div class="empty-state"><div class="es-icon">' + I("alert", 34) + '</div><p>রিয়্যাকশন লোড করা যায়নি। ইন্টারনেট দেখুন।</p></div>';
     return;
   }
+  if (!container.isConnected) return;
 
   const reactRow = container.querySelector("#reactRow");
   function renderReacts() {
@@ -79,7 +84,7 @@ export async function renderEngagement(container, post, user) {
           renderReacts(); renderStats();
         } catch (e) {
           btn.disabled = false;
-          alert("❌ " + (e.message || "ব্যর্থ হয়েছে"));
+          alert(e.message || "ব্যর্থ হয়েছে");
         }
       });
     });
@@ -91,7 +96,7 @@ export async function renderEngagement(container, post, user) {
   function renderComments() {
     container.querySelector("#commCount").textContent = "(" + bn(data.comments.length) + ")";
     if (!data.comments.length) {
-      commList.innerHTML = '<p style="color:var(--text-faint);font-size:.85rem;text-align:center;padding:10px 0 4px">এখনো কোনো মন্তব্য নেই — প্রথম মন্তব্যটি আপনিই করুন 💬</p>';
+      commList.innerHTML = '<p style="color:var(--text-faint);font-size:.85rem;text-align:center;padding:10px 0 4px">এখনো কোনো মন্তব্য নেই — প্রথম মন্তব্যটি আপনিই করুন</p>';
     } else {
       commList.innerHTML = data.comments.map(function (c) {
         const canDel = isStaff();
@@ -120,7 +125,7 @@ export async function renderEngagement(container, post, user) {
         '<textarea id="commInput" maxlength="500" placeholder="মন্তব্য লিখুন… (২–৫০০ অক্ষর)"></textarea>' +
         '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">' +
           '<span class="field-hint">নাম: ' + escapeHtml(user.displayName || (user.email || "").split("@")[0]) + '</span>' +
-          '<button class="btn btn-gold btn-sm" id="commSendBtn">💬 পোস্ট করুন</button>' +
+          '<button class="btn btn-gold btn-sm btn-ic" id="commSendBtn">' + I("send", 14) + ' পোস্ট করুন</button>' +
         '</div>';
       commForm.querySelector("#commSendBtn").addEventListener("click", async function () {
         const ta = commForm.querySelector("#commInput");
@@ -133,7 +138,7 @@ export async function renderEngagement(container, post, user) {
           data.comments = fresh;
           renderComments();
         } catch (e) {
-          alert("❌ মন্তব্য পোস্ট হয়নি: " + (e.message || ""));
+          alert("মন্তব্য পোস্ট হয়নি: " + (e.message || ""));
         } finally { btn.disabled = false; }
       });
     } else {
@@ -149,14 +154,14 @@ export async function renderEngagement(container, post, user) {
   function renderStats() {
     const totalR = Object.values(data.byEmoji).reduce(function (a, b) { return a + b; }, 0);
     container.querySelector("#engStats").innerHTML =
-      '<span>❤️ <b>' + bn(totalR) + '</b> রিয়্যাকশন</span>' +
-      '<span>💬 <b>' + bn(data.comments.length) + '</b> মন্তব্য</span>' +
-      '<span>👁️ <b>' + bn(post.viewCount) + '</b> বার পঠিত</span>';
+      '<span class="meta-ic">' + I("heart", 14) + ' <b>' + bn(totalR) + '</b> রিয়্যাকশন</span>' +
+      '<span class="meta-ic">' + I("comment", 14) + ' <b>' + bn(data.comments.length) + '</b> মন্তব্য</span>' +
+      '<span class="meta-ic">' + I("eye", 14) + ' <b>' + bn(post.viewCount) + '</b> বার পঠিত</span>';
   }
 
   function openLoginPrompt() {
     googleSignIn().catch(function (err) {
-      alert("❌ লগইন ব্যর্থ: " + (err && err.message ? err.message : "আবার চেষ্টা করুন"));
+      alert("লগইন ব্যর্থ: " + (err && err.message ? err.message : "আবার চেষ্টা করুন"));
     });
   }
 

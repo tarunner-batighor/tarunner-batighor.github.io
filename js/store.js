@@ -90,9 +90,12 @@ function norm(id, d) {
     status: d.status || "",
     authorUid: d.authorUid || "",
     authorName: d.authorName || "",
+    authorPenName: d.authorPenName || "",
+    authorBio: d.authorBio || "",
     authorEmail: d.authorEmail || "",
     authorPhotoURL: d.authorPhotoURL || "",
     viewCount: typeof d.viewCount === "number" ? d.viewCount : 0,
+    featured: d.featured === true,
     rejectReason: d.rejectReason || "",
     createdAt: d.createdAt || null,
     _ms: tsMs(d.createdAt),
@@ -132,18 +135,55 @@ export async function getPostById(id) {
 /* ---------------- নতুন লেখা জমা ---------------- */
 
 export async function submitPost({ title, content, category, user }) {
+  const profile = getLocalProfile();
+  const penName = (profile.penName || "").trim();
   const ref = await addDoc(collection(db, "Posts"), {
     title: title,
     content: content,
     category: category,
     status: "pending",
     authorUid: user.uid,
-    authorName: user.displayName || "",
+    authorName: penName || user.displayName || "",
+    authorPenName: penName,
+    authorBio: (profile.bio || "").trim().slice(0, 400),
     authorEmail: user.email || "",
     authorPhotoURL: user.photoURL || "",
     createdAt: serverTimestamp()
   });
   return ref.id;
+}
+
+/* ---------------- লেখক প্রোফাইল (কলম-নাম + পরিচিতি) ---------------- */
+
+export async function getMyProfile(uid) {
+  const snap = await getDoc(doc(db, "users", uid));
+  return snap.exists() ? snap.data() : {};
+}
+
+export async function saveMyProfile(uid, data) {
+  await setDoc(doc(db, "users", uid), {
+    penName: (data.penName || "").trim().slice(0, 80),
+    bio: (data.bio || "").trim().slice(0, 400),
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  saveLocalProfile(data);
+}
+
+const PROFILE_KEY = "bt-profile";
+export function saveLocalProfile(d) {
+  try { localStorage.setItem(PROFILE_KEY, JSON.stringify({ penName: d.penName || "", bio: d.bio || "" })); } catch (e) {}
+}
+export function getLocalProfile() {
+  try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}"); } catch (e) { return {}; }
+}
+
+/* ---------------- সম্পাদকের ফিচার্ড পোস্ট ---------------- */
+
+export async function setFeatured(id, on) {
+  const data = { featured: !!on };
+  if (on) data.featuredAt = serverTimestamp();
+  await updateDoc(doc(db, "Posts", id), data);
+  invalidateCache();
 }
 
 /* আমার সব লেখা (pending/rejected সহ — rules নিজের লেখা পড়তে দেয়) */
@@ -395,6 +435,28 @@ export function toggleBookmark(id) {
   localStorage.setItem(BM_KEY, JSON.stringify(list.slice(0, 200)));
   return list.indexOf(id) !== -1;
 }
+
+/* ---------------- পঠন-ইতিহাস (ডিভাইস-লোকাল, ফ্রি) ---------------- */
+
+const HIST_KEY = "bt-history";
+export function pushHistory(post) {
+  try {
+    let list = JSON.parse(localStorage.getItem(HIST_KEY) || "[]");
+    list = list.filter(function (x) { return x.id !== post.id; });
+    list.unshift({
+      id: post.id,
+      title: post.title || "",
+      category: post.category || "",
+      authorName: post.authorName || "",
+      at: Date.now()
+    });
+    localStorage.setItem(HIST_KEY, JSON.stringify(list.slice(0, 30)));
+  } catch (e) {}
+}
+export function getHistory() {
+  try { return JSON.parse(localStorage.getItem(HIST_KEY) || "[]"); } catch (e) { return []; }
+}
+export function clearHistory() { try { localStorage.removeItem(HIST_KEY); } catch (e) {} }
 
 /* ---------------- ড্রাফট (লোকাল) ---------------- */
 

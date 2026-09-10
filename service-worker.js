@@ -1,23 +1,25 @@
 /* ============================================================
-   তারুণ্যের বাতিঘর — Service Worker v2 (প্রিমিয়াম সংস্করণ)
+   তারুণ্যের বাতিঘর — Service Worker v3 (প্রিমিয়াম পুনর্গঠন)
    - অ্যাপ শেল প্রি-ক্যাশ, অফলাইন ফলব্যাক
    - নিজস্ব ফাইল: stale-while-revalidate
    - বাইরের হোস্ট (fonts/gstatic/Firebase JS): cache-first
    - FCM ওয়েব পুশ হ্যান্ডলার পুরোনো মতো অক্ষত
    ============================================================ */
 
-const CACHE_NAME = "batighor-v12";
-const SHELL = "batighor-shell-v12";
-const RUNTIME = "batighor-runtime-v12";
+const CACHE_NAME = "batighor-v13";
+const SHELL = "batighor-shell-v13";
+const RUNTIME = "batighor-runtime-v13";
 
 const APP_SHELL = [
   "./",
   "index.html",
+  "404.html",
   "manifest.webmanifest",
   "favicon.svg",
   "assets/styles.css",
   "js/fb.js",
   "js/categories.js",
+  "js/icons.js",
   "js/store.js",
   "js/engage.js",
   "js/leaderboard.js",

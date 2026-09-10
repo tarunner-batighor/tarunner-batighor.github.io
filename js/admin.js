@@ -12,9 +12,11 @@ import {
   escapeHtml, bn, fmtDate, tsMs,
   getAllPostsForStaff, staffUpdatePost, adminDeletePost,
   notifyAuthorDecision, findUserByEmail, getAllUsers, setModerator,
-  syncStaffList, logActivity, getActivity, invalidateCache
+  syncStaffList, logActivity, getActivity, invalidateCache, setFeatured
 } from "./store.js";
 import { CATEGORIES, catMeta } from "./categories.js";
+import { catIcon, uiIcon } from "./icons.js";
+const I = uiIcon;
 import {
   doc, addDoc, collection, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -50,11 +52,11 @@ export function openPostEditorModal(existing) {
   return new Promise(function (resolve) {
     const catOpts = CATEGORIES.map(function (c) {
       return '<option value="' + c.key + '"' + (existing && existing.category === c.key ? " selected" : "") + '>' +
-        c.icon + " " + c.name + "</option>";
+        c.name + "</option>";
     }).join("");
 
     const m = openModal(
-      '<div class="modal-head"><h3>✍️ লেখা সম্পাদনা</h3><button class="icon-btn" data-close>✕</button></div>' +
+      '<div class="modal-head"><h3 class="mh-title">' + I("pen", 18) + ' লেখা সম্পাদনা</h3><button class="icon-btn" data-close>' + I("x", 16) + '</button></div>' +
       '<div class="modal-body">' +
         '<div class="field"><label>শিরোনাম</label><input id="edTitle" maxlength="300" value="' + escapeHtml(existing ? existing.title : "") + '"></div>' +
         '<div class="field"><label>বিভাগ</label><select id="edCategory">' + catOpts + "</select></div>" +
@@ -63,7 +65,7 @@ export function openPostEditorModal(existing) {
         '<div class="char-count" id="edCount"></div></div>' +
       "</div>" +
       '<div class="modal-foot"><button class="btn btn-ghost" data-close>বাতিল</button>' +
-      '<button class="btn btn-gold" id="edSave">💾 সেভ করুন</button></div>'
+      '<button class="btn btn-gold btn-ic" id="edSave">' + I("save", 16) + ' সেভ করুন</button></div>'
     );
 
     const titleEl = m.overlay.querySelector("#edTitle");
@@ -98,7 +100,7 @@ export async function openAdminPanel() {
   if (panelRef) { panelRef.close(); panelRef = null; }
 
   const m = openModal(
-    '<div class="modal-head"><h3>🛡️ মডারেশন প্যানেল</h3><button class="icon-btn" data-close>✕</button></div>' +
+    '<div class="modal-head"><h3 class="mh-title">' + I("shield", 18) + ' মডারেশন প্যানেল</h3><button class="icon-btn" data-close>' + I("x", 16) + '</button></div>' +
     '<div class="modal-body" id="adminBody" style="padding:0"><div class="loading-block"><div class="loader"></div>লোড হচ্ছে…</div></div>',
     { wide: true }
   );
@@ -112,18 +114,18 @@ export async function openAdminPanel() {
     const user = currentUser();
     if (!user) {
       body.innerHTML =
-        '<div class="login-card"><div class="li-ic">🔐</div><h3>স্টাফ লগইন</h3>' +
+        '<div class="login-card"><div class="li-ic">' + I("lock", 42) + '</div><h3>স্টাফ লগইন</h3>' +
         '<p style="color:var(--text-soft);font-size:.88rem">মডারেশন প্যানেল শুধু অ্যাডমিন ও মডারেটরদের জন্য।</p>' +
         '<button class="google-btn" id="adminGoogleBtn">' + googleSvg() + " Google দিয়ে লগইন</button>" +
         '<p class="login-note">অ্যাডমিন: ' + escapeHtml(ADMIN_EMAIL) + "</p></div>";
       body.querySelector("#adminGoogleBtn").addEventListener("click", function () {
-        googleSignIn().catch(function (e) { return alert("❌ লগইন ব্যর্থ: " + (e.message || "")); });
+        googleSignIn().catch(function (e) { return alert("লগইন ব্যর্থ: " + (e.message || "")); });
       });
       return;
     }
     if (!roleStaff()) {
       body.innerHTML =
-        '<div class="login-card"><div class="li-ic">🚫</div><h3>অননুমোদিত প্রবেশ</h3>' +
+        '<div class="login-card"><div class="li-ic">' + I("ban", 42) + '</div><h3>অননুমোদিত প্রবেশ</h3>' +
         '<p style="color:var(--text-soft);font-size:.88rem">আপনি (' + escapeHtml(user.email || "") + ") স্টাফ নন।<br>মডারেটর হতে অ্যাডমিনের সাথে যোগাযোগ করুন।</p>" +
         '<button class="btn btn-ghost" data-close>বন্ধ করুন</button></div>';
       return;
@@ -155,12 +157,12 @@ async function renderPanel() {
 
   body.innerHTML =
     '<div class="admin-tabs">' +
-      tabBtn("pending", "📝 পেন্ডিং", counts.pending) +
-      tabBtn("published", "✅ প্রকাশিত", counts.published) +
-      tabBtn("rejected", "❌ বাতিল", counts.rejected) +
-      (admin ? tabBtn("moderators", "👥 মডারেটর", null) : "") +
-      tabBtn("history", "📜 ইতিহাস", null) +
-      '<button class="btn btn-ghost btn-sm" id="admRefresh" style="margin-left:auto">🔄</button>' +
+      tabBtn("pending", I("clock", 14) + " পেন্ডিং", counts.pending) +
+      tabBtn("published", I("checkCircle", 14) + " প্রকাশিত", counts.published) +
+      tabBtn("rejected", I("xCircle", 14) + " বাতিল", counts.rejected) +
+      (admin ? tabBtn("moderators", I("users", 14) + " মডারেটর", null) : "") +
+      tabBtn("history", I("history", 14) + " ইতিহাস", null) +
+      '<button class="btn btn-ghost btn-sm icon-only" id="admRefresh" style="margin-left:auto" title="রিফ্রেশ">' + I("refresh", 16) + "</button>" +
     "</div>" +
     '<div class="admin-content" id="admContent"><div class="loading-block"><div class="loader"></div>পোস্ট লোড হচ্ছে…</div></div>';
 
@@ -198,27 +200,29 @@ async function loadPosts() {
       if (el) el.textContent = bn(counts[k]);
     });
   } catch (e) {
-    content.innerHTML = '<div class="empty-state"><div class="es-icon">⚠️</div><p>লোড ব্যর্থ: ' + escapeHtml(e.message || "") + "</p></div>";
+    content.innerHTML = '<div class="empty-state"><div class="es-icon">' + I("alert", 34) + '</div><p>লোড ব্যর্থ: ' + escapeHtml(e.message || "") + "</p></div>";
   }
 }
 
 function renderPostList(content, list) {
   if (!list.length) {
-    content.innerHTML = '<div class="empty-state"><div class="es-icon">🎉</div><h3>এই তালিকা খালি</h3></div>';
+    content.innerHTML = '<div class="empty-state"><div class="es-icon">' + I("checkCircle", 36) + '</div><h3>এই তালিকা খালি</h3></div>';
     return;
   }
   content.innerHTML = list.map(function (p) {
     const c = catMeta(p.category);
-    const chip = p.status === "pending" ? '<span class="chip chip-pending">⏳ পেন্ডিং</span>'
-      : p.status === "published" ? '<span class="chip chip-published">✅ প্রকাশিত</span>'
-      : '<span class="chip chip-rejected">❌ বাতিল</span>';
+    const chip = p.status === "pending" ? '<span class="chip chip-pending chip-ic">' + I("clock", 13) + " পেন্ডিং</span>"
+      : p.status === "published" ? '<span class="chip chip-published chip-ic">' + I("checkCircle", 13) + " প্রকাশিত</span>"
+      : '<span class="chip chip-rejected chip-ic">' + I("xCircle", 13) + " বাতিল</span>";
     return '<div class="mod-item" data-id="' + p.id + '">' +
       '<div class="mi-top"><div style="min-width:0">' +
         '<h4>' + escapeHtml(p.title || "(শিরোনামহীন)") + "</h4>" +
-        '<div class="mi-meta">' + c.icon + " " + escapeHtml(c.name) + " · ✍️ " + escapeHtml(p.authorName || "অজ্ঞাত") +
-        " · 📅 " + escapeHtml(fmtDate(p.createdAt)) + " · 👁️ " + bn(p.viewCount) + " " + chip + "</div>" +
+        '<div class="mi-meta"><span class="mi-cat">' + catIcon(p.category, 14) + escapeHtml(c.name) + "</span>" +
+          "<span class='meta-ic'>" + I("pen", 13) + " " + escapeHtml(p.authorName || "অজ্ঞাত") + "</span>" +
+          "<span class='meta-ic'>" + I("calendar", 13) + " " + escapeHtml(fmtDate(p.createdAt)) + "</span><span class='meta-ic'>" + I("eye", 13) + " " + bn(p.viewCount) + "</span>" +
+          (p.featured ? "<span class='meta-ic feat-tag'>" + I("star", 13) + " ফিচার্ড</span> " : "") + chip + "</div>" +
         (p.status === "rejected" && p.rejectReason ? '<div class="reject-note">কারণ: ' + escapeHtml(p.rejectReason) + "</div>" : "") +
-        (p.status === "pending" && p.reviewedBy ? '<div class="review-note">🔎 ' + escapeHtml(p.reviewedBy) + " পর্যালোচনা করছেন</div>" : "") +
+        (p.status === "pending" && p.reviewedBy ? '<div class="review-note">' + I("search", 13) + " " + escapeHtml(p.reviewedBy) + " পর্যালোচনা করছেন</div>" : "") +
       "</div>" +
       '<div class="mi-actions">' + actionButtons(p) + "</div></div>" +
       '<div class="mi-body" hidden>' + escapeHtml(p.content || "") + "</div>" +
@@ -237,6 +241,8 @@ function renderPostList(content, list) {
         panelRef.close(); location.hash = "#/post/" + id;
       });
     }
+    item.querySelector("[data-act='feature']") && item.querySelector("[data-act='feature']").addEventListener("click", function () { doFeature(post, true); });
+    item.querySelector("[data-act='unfeature']") && item.querySelector("[data-act='unfeature']").addEventListener("click", function () { doFeature(post, false); });
     item.querySelector("[data-act='approve']") && item.querySelector("[data-act='approve']").addEventListener("click", function () { doApprove(post); });
     item.querySelector("[data-act='reject']") && item.querySelector("[data-act='reject']").addEventListener("click", function () { doReject(post); });
     item.querySelector("[data-act='edit']") && item.querySelector("[data-act='edit']").addEventListener("click", function () { doEdit(post); });
@@ -245,14 +251,19 @@ function renderPostList(content, list) {
 }
 
 function actionButtons(p) {
-  let html = '<button class="btn btn-ghost btn-sm" data-act="view">👁️ দেখুন</button>';
-  if (p.status === "published") html += '<button class="btn btn-ghost btn-sm" data-act="open">📖 খুলুন</button>';
-  if (p.status === "pending") {
-    html += '<button class="btn btn-teal btn-sm" data-act="approve">✅ প্রকাশ</button>';
-    html += '<button class="btn btn-danger btn-sm" data-act="reject">❌ বাতিল</button>';
+  let html = '<button class="btn btn-ghost btn-sm btn-ic" data-act="view">' + I("eye", 14) + " দেখুন</button>";
+  if (p.status === "published") {
+    html += '<button class="btn btn-ghost btn-sm btn-ic" data-act="open">' + I("bookOpen", 14) + " খুলুন</button>";
+    html += p.featured
+      ? '<button class="btn btn-ghost btn-sm btn-ic feat-on" data-act="unfeature">' + I("star", 14) + " ফিচার্ড</button>"
+      : '<button class="btn btn-ghost btn-sm btn-ic" data-act="feature">' + I("star", 14) + " ফিচার্ড</button>";
   }
-  html += '<button class="btn btn-ghost btn-sm" data-act="edit">✏️ এডিট</button>';
-  if (roleAdmin()) html += '<button class="btn btn-danger btn-sm" data-act="delete">🗑️ ডিলিট</button>';
+  if (p.status === "pending") {
+    html += '<button class="btn btn-teal btn-sm btn-ic" data-act="approve">' + I("check", 15) + " প্রকাশ</button>";
+    html += '<button class="btn btn-danger btn-sm btn-ic" data-act="reject">' + I("x", 15) + " বাতিল</button>";
+  }
+  html += '<button class="btn btn-ghost btn-sm btn-ic" data-act="edit">' + I("pen", 14) + " এডিট</button>";
+  if (roleAdmin()) html += '<button class="btn btn-danger btn-sm btn-ic" data-act="delete">' + I("trash", 14) + " ডিলিট</button>";
   return html;
 }
 
@@ -273,15 +284,25 @@ async function doApprove(post) {
     await notifyAuthorDecision({ post: post, decision: "approved", staff: s });
     await logActivity("approved", post.title, post.id, "", s);
     invalidateCache();
-    toast("✅ প্রকাশিত হয়েছে");
+    toast("প্রকাশিত হয়েছে");
     loadPosts();
-  } catch (e) { alert("❌ " + (e.message || "")); }
+  } catch (e) { alert(e.message || "একটি সমস্যা হয়েছে"); }
+}
+
+async function doFeature(post, on) {
+  const s = staffInfo();
+  try {
+    await setFeatured(post.id, on);
+    await logActivity(on ? "featured" : "unfeatured", post.title, post.id, "", s);
+    toast(on ? "ফ্রন্ট পেজে ফিচার্ড হয়েছে" : "ফিচার্ড তালিকা থেকে সরানো হয়েছে");
+    loadPosts();
+  } catch (e) { alert(e.message || "একটি সমস্যা হয়েছে"); }
 }
 
 function promptReason() {
   return new Promise(function (resolve) {
     const m = openModal(
-      '<div class="modal-head"><h3>❌ লেখা বাতিলের কারণ</h3><button class="icon-btn" data-close>✕</button></div>' +
+      '<div class="modal-head"><h3 class="mh-title">' + I("xCircle", 18) + ' লেখা বাতিলের কারণ</h3><button class="icon-btn" data-close>' + I("x", 16) + '</button></div>' +
       '<div class="modal-body"><div class="field"><label>লেখককে জানানোর জন্য কারণ (ঐচ্ছিক)</label>' +
       '<input id="rjReason" maxlength="400" placeholder="যেমন: কপিরাইটকৃত লেখা / নিয়মবহির্ভূত বিষয়বস্তু…"></div></div>' +
       '<div class="modal-foot"><button class="btn btn-ghost" id="rjSkip">কারণ ছাড়াই</button>' +
@@ -308,9 +329,9 @@ async function doReject(post) {
     });
     await notifyAuthorDecision({ post: post, decision: "rejected", reason: reason, staff: s });
     await logActivity("rejected", post.title, post.id, reason, s);
-    toast("❌ বাতিল করা হয়েছে");
+    toast("বাতিল করা হয়েছে");
     loadPosts();
-  } catch (e) { alert("❌ " + (e.message || "")); }
+  } catch (e) { alert(e.message || "একটি সমস্যা হয়েছে"); }
 }
 
 async function doEdit(post) {
@@ -329,22 +350,22 @@ async function doEdit(post) {
       lastEditedBy: s.name, lastEditedAt: serverTimestamp(), reviewedBy: null
     });
     await logActivity("edited", result.title, post.id, "", s);
-    if (currentRole() === "moderator") notifyMainAdmin("🛡️ " + s.name + ' এডিট করেছেন: "' + result.title + '"');
+    if (currentRole() === "moderator") notifyMainAdmin(s.name + ' এডিট করেছেন: "' + result.title + '"');
     invalidateCache();
-    toast("✏️ সংরক্ষিত হয়েছে");
+    toast("সংরক্ষিত হয়েছে");
     loadPosts();
-  } catch (e) { alert("❌ " + (e.message || "")); }
+  } catch (e) { alert(e.message || "একটি সমস্যা হয়েছে"); }
 }
 
 async function doDelete(post) {
-  if (!confirm('⚠️ "' + post.title + '" চিরতরে ডিলিট হবে। নিশ্চিত?')) return;
+  if (!confirm('"' + post.title + '" চিরতরে ডিলিট হবে। নিশ্চিত?')) return;
   try {
     await adminDeletePost(post.id);
     await logActivity("deleted", post.title, post.id, "", staffInfo());
     invalidateCache();
-    toast("🗑️ ডিলিট হয়েছে");
+    toast("ডিলিট হয়েছে");
     loadPosts();
-  } catch (e) { alert("❌ " + (e.message || "")); }
+  } catch (e) { alert(e.message || "একটি সমস্যা হয়েছে"); }
 }
 
 async function notifyMainAdmin(message) {
@@ -365,14 +386,14 @@ async function renderModerators() {
   const content = panelRef.overlay.querySelector("#admContent");
   content.innerHTML =
     "<div>" +
-      '<div class="guidelines"><strong>➕ নতুন মডারেটর যোগ করুন</strong>' +
+      '<div class="guidelines"><strong class="gn-head">' + I("plus", 15) + " নতুন মডারেটর যোগ করুন</strong>" +
         "যাঁকে মডারেটর বানাবেন, তাঁকে আগে একবার Google দিয়ে এই সাইটে লগইন করে থাকতে হবে। " +
         "নিচে তাঁর ইমেইল দিয়ে খুঁজুন।</div>" +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">' +
         '<input id="modEmail" class="" placeholder="মডারেটরের Gmail ঠিকানা…" style="flex:1;min-width:220px;padding:11px 14px;border-radius:12px;border:1px solid var(--border);background:var(--bg-soft);color:var(--text)">' +
-        '<button class="btn btn-gold" id="modSearchBtn">🔎 খুঁজুন</button></div>' +
+        '<button class="btn btn-gold btn-ic" id="modSearchBtn">' + I("search", 15) + " খুঁজুন</button></div>" +
       '<div id="modSearchResult"></div>' +
-      '<h4 style="margin:22px 0 12px">🛡️ বর্তমান মডারেটর তালিকা</h4>' +
+      '<h4 class="tab-h4">' + I("shield", 16) + " বর্তমান মডারেটর তালিকা</h4>" +
       '<div id="modList"><div class="loading-block"><div class="loader"></div>লোড হচ্ছে…</div></div>' +
     "</div>";
 
@@ -390,11 +411,11 @@ async function renderModerators() {
       }
       const isMod = searchUser.role === "moderator" && searchUser.active !== false;
       const isMainAdmin = searchUser.email === ADMIN_EMAIL;
-      out.innerHTML = '<div class="mod-list-row"><div><div class="u-name">👤 ' + escapeHtml(searchUser.name || searchUser.email) + "</div>" +
+      out.innerHTML = '<div class="mod-list-row"><div><div class="u-name u-name-ic">' + I("user", 14) + " " + escapeHtml(searchUser.name || searchUser.email) + "</div>" +
         '<div class="u-mail">' + escapeHtml(searchUser.email) + "</div></div>" +
         (isMainAdmin ? '<span class="chip chip-published">প্রধান অ্যাডমিন</span>'
-          : isMod ? '<button class="btn btn-danger btn-sm" data-remove="1">🛡️ সরান</button>'
-          : '<button class="btn btn-teal btn-sm" data-add="1">🛡️ মডারেটর বানান</button>') + "</div>";
+          : isMod ? '<button class="btn btn-danger btn-sm btn-ic" data-remove="1">' + I("shield", 14) + " সরান</button>"
+          : '<button class="btn btn-teal btn-sm btn-ic" data-add="1">' + I("shield", 14) + " মডারেটর বানান</button>") + "</div>";
       const addB = out.querySelector("[data-add]"), rmB = out.querySelector("[data-remove]");
       if (addB) addB.addEventListener("click", function () { toggleMod(searchUser, true); });
       if (rmB) rmB.addEventListener("click", function () { toggleMod(searchUser, false); });
@@ -407,11 +428,11 @@ async function renderModerators() {
     try {
       await setModerator(user.uid, on, user.name || user.email || "");
       await refreshStaffConfig();
-      toast(on ? "🛡️ মডারেটর যুক্ত হয়েছে" : "মডারেটর সরানো হয়েছে");
+      toast(on ? "মডারেটর যুক্ত হয়েছে" : "মডারেটর সরানো হয়েছে");
       loadModList();
       content.querySelector("#modSearchResult").innerHTML = "";
       content.querySelector("#modEmail").value = "";
-    } catch (e) { alert("❌ " + (e.message || "")); }
+    } catch (e) { alert(e.message || "একটি সমস্যা হয়েছে"); }
   }
 
   async function loadModList() {
@@ -421,7 +442,7 @@ async function renderModerators() {
       const mods = users.filter(function (u) { return u.role === "moderator" && u.active !== false; });
       if (!mods.length) { box.innerHTML = '<p class="field-hint">এখনো কোনো মডারেটর নেই</p>'; return; }
       box.innerHTML = mods.map(function (u) {
-        return '<div class="mod-list-row"><div><div class="u-name">🛡️ ' + escapeHtml(u.name || u.email || u.uid) + "</div>" +
+        return '<div class="mod-list-row"><div><div class="u-name u-name-ic">' + I("shield", 14) + " " + escapeHtml(u.name || u.email || u.uid) + "</div>" +
           '<div class="u-mail">' + escapeHtml(u.email || "") + "</div></div>" +
           '<button class="btn btn-danger btn-sm" data-uid="' + u.uid + '" data-name="' + escapeHtml(u.name || u.email || "") + '">সরান</button></div>';
       }).join("");
@@ -455,13 +476,13 @@ async function renderHistory() {
   content.innerHTML = '<div class="loading-block"><div class="loader"></div>ইতিহাস লোড হচ্ছে…</div>';
   try {
     const items = await getActivity();
-    if (!items.length) { content.innerHTML = '<div class="empty-state"><div class="es-icon">📜</div><h3>এখনো কোনো কার্যক্রম নেই</h3></div>'; return; }
-    const ICONS = { approved: ["✅", "var(--green)"], rejected: ["❌", "var(--red)"], edited: ["✏️", "var(--blue)"], deleted: ["🗑️", "var(--red)"] };
+    if (!items.length) { content.innerHTML = '<div class="empty-state"><div class="es-icon">' + I("history", 36) + '</div><h3>এখনো কোনো কার্যক্রম নেই</h3></div>'; return; }
+    const ICONS = { approved: ["checkCircle", "var(--green)"], rejected: ["xCircle", "var(--red)"], edited: ["pen", "var(--blue)"], deleted: ["trash", "var(--red)"], featured: ["star", "var(--gold)"], unfeatured: ["star", "var(--text-faint)"] };
     content.innerHTML = items.map(function (a) {
-      const ic = ICONS[a.type] || ["•", "var(--text-faint)"];
+      const ic = ICONS[a.type] || ["", "var(--text-faint)"];
       const title = a.postTitle || a.title || "";
       const who = a.actorName ? ' <span class="u-mail">· ' + escapeHtml(a.actorName) + "</span>" : "";
-      return '<div class="activity-item"><span class="ai-tag" style="color:' + ic[1] + '">' + ic[0] + "</span>" +
+      return '<div class="activity-item"><span class="ai-tag" style="color:' + ic[1] + '">' + (ic[0] ? I(ic[0], 15) : "•") + "</span>" +
         '<span style="flex:1">' + escapeHtml(title) + who +
         (a.reason ? ' <span class="reject-note">কারণ: ' + escapeHtml(a.reason) + "</span>" : "") + "</span>" +
         '<span class="ai-time">' + escapeHtml(fmtDate(a.at)) + "</span></div>";
