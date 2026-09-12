@@ -4,6 +4,10 @@
   "private": true,
   "main": "fcm-pusher.js",
   "dependencies": {
-    "firebase-admin": "^12.1.0"
+    "firebase-admin": "^12.1.0",
+    "google-auth-library": "^9.14.0"
+  },
+  "scripts": {
+    "deploy-rules": "node deploy-firestore-rules.js"
   }
 }

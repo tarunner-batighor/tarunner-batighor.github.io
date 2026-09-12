@@ -1,0 +1,36 @@
+name: Deploy Firestore Rules
+
+# ম্যানুয়ালি চালানো যায়: GitHub → Actions → "Deploy Firestore Rules" → Run workflow
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        working-directory: scripts
+        run: npm install --no-audit --no-fund
+
+      - name: Publish firestore.rules
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT secret সেট করা নেই"
+            exit 1
+          fi
+          echo "$FIREBASE_SERVICE_ACCOUNT" > ../service-account.json
+          GOOGLE_APPLICATION_CREDENTIALS=$GITHUB_WORKSPACE/service-account.json \
+            node deploy-firestore-rules.js
