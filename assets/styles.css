@@ -1345,3 +1345,56 @@ mark { background: linear-gradient(180deg, transparent 55%, rgba(245, 181, 61, 0
   .quote-today { padding: 30px 22px 26px; }
 }
 .q-more-row { gap: 12px; flex-wrap: wrap; }
+
+/* ============================================================
+   দৈনিক বাণী — স্টাফ-পরিচালিত সংস্করণের অতিরিক্ত স্টাইল
+============================================================ */
+.q-page-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.qt-source, .qc-source {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 12px; font-size: 0.8rem; font-weight: 600;
+  color: var(--teal); text-decoration: none;
+}
+.qt-source:hover, .qc-source:hover { text-decoration: underline; }
+.qc-source { margin-top: 10px; font-size: 0.74rem; }
+
+/* অ্যাডমিন: বাণী ফর্ম */
+.aq-form {
+  display: flex; flex-wrap: wrap; gap: 12px 14px;
+  background: var(--bg-soft, rgba(127,127,127,.06));
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 18px; margin-bottom: 22px;
+}
+.aq-form .field { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.aq-form label { font-size: .8rem; font-weight: 600; color: var(--text-soft); }
+.aq-form input[type="date"], .aq-form input, .aq-form select, .aq-form textarea {
+  padding: 10px 13px; border-radius: 11px; border: 1px solid var(--border);
+  background: var(--card); color: var(--text); font: inherit; font-size: .9rem; width: 100%;
+}
+.aq-form textarea { font-family: var(--font-serif); line-height: 1.8; resize: vertical; }
+.aq-form .char-count { align-self: flex-end; }
+.aq-sug-head { display: block; font-size: .78rem; font-weight: 600; color: var(--gold); margin-bottom: 8px; }
+.aq-sug-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 9px; max-height: 250px; overflow-y: auto; }
+.aq-sug {
+  text-align: left; display: flex; flex-direction: column; gap: 6px;
+  background: var(--card); border: 1px dashed var(--border-strong);
+  border-radius: 11px; padding: 11px 13px; cursor: pointer; color: var(--text);
+  font-family: var(--font-serif); font-size: .86rem; line-height: 1.7; transition: .16s;
+}
+.aq-sug:hover { border-color: var(--gold); background: rgba(245,181,61,.07); }
+.aq-sug span { font-family: inherit; font-size: .73rem; color: var(--text-faint); font-style: normal; }
+.aq-item {
+  display: grid; grid-template-columns: 190px 1fr auto; gap: 14px; align-items: center;
+  padding: 13px 16px; border: 1px solid var(--border); border-radius: 12px;
+  background: var(--card); margin-bottom: 9px;
+}
+.aq-meta { font-size: .82rem; color: var(--text-soft); display: flex; flex-direction: column; gap: 5px; }
+.aq-text { font-family: var(--font-serif); font-size: .9rem; line-height: 1.7; color: var(--text); }
+.aq-text cite { display: block; margin-top: 5px; font-style: normal; color: var(--gold); font-size: .78rem; font-family: inherit; }
+.aq-acts { display: flex; gap: 6px; }
+.aq-up { border-left: 3px solid var(--teal); }
+.aq-past .aq-item { grid-template-columns: 160px 1fr auto; }
+@media (max-width: 760px) {
+  .aq-item, .aq-past .aq-item { grid-template-columns: 1fr; gap: 8px; }
+  .aq-acts { justify-content: flex-end; }
+}

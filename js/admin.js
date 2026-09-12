@@ -12,10 +12,14 @@ import {
   escapeHtml, bn, fmtDate, tsMs,
   getAllPostsForStaff, staffUpdatePost, adminDeletePost,
   notifyAuthorDecision, findUserByEmail, getAllUsers, setModerator,
-  syncStaffList, logActivity, getActivity, invalidateCache, setFeatured
+  syncStaffList, logActivity, getActivity, invalidateCache, setFeatured,
+  loadQuotes, addQuote, staffUpdateQuote, staffDeleteQuote, loadPublished
 } from "./store.js";
 import { CATEGORIES, catMeta } from "./categories.js";
 import { catIcon, uiIcon } from "./icons.js";
+import {
+  dayIndexOf, inputValueOfDay, dayIndexFromInput, bnDateOfDay, suggestFromPosts
+} from "./quotes.js";
 const I = uiIcon;
 import {
   doc, addDoc, collection, serverTimestamp
@@ -96,8 +100,9 @@ export function openPostEditorModal(existing) {
 
 let panelRef = null;
 
-export async function openAdminPanel() {
+export async function openAdminPanel(initialTab) {
   if (panelRef) { panelRef.close(); panelRef = null; }
+  activeTab = initialTab || "pending";
 
   const m = openModal(
     '<div class="modal-head"><h3 class="mh-title">' + I("shield", 18) + ' মডারেশন প্যানেল</h3><button class="icon-btn" data-close>' + I("x", 16) + '</button></div>' +
@@ -160,6 +165,7 @@ async function renderPanel() {
       tabBtn("pending", I("clock", 14) + " পেন্ডিং", counts.pending) +
       tabBtn("published", I("checkCircle", 14) + " প্রকাশিত", counts.published) +
       tabBtn("rejected", I("xCircle", 14) + " বাতিল", counts.rejected) +
+      tabBtn("quotes", I("quote", 14) + " বাণী", null) +
       (admin ? tabBtn("moderators", I("users", 14) + " মডারেটর", null) : "") +
       tabBtn("history", I("history", 14) + " ইতিহাস", null) +
       '<button class="btn btn-ghost btn-sm icon-only" id="admRefresh" style="margin-left:auto" title="রিফ্রেশ">' + I("refresh", 16) + "</button>" +
@@ -185,6 +191,7 @@ async function loadPosts() {
   if (!content) return;
   if (activeTab === "moderators") return renderModerators();
   if (activeTab === "history") return renderHistory();
+  if (activeTab === "quotes") return renderQuotesTab();
   content.innerHTML = '<div class="loading-block"><div class="loader"></div>লোড হচ্ছে…</div>';
   try {
     allPosts = await getAllPostsForStaff();
@@ -378,6 +385,215 @@ async function notifyMainAdmin(message) {
       type: "approved", message: message, read: false, createdAt: serverTimestamp()
     });
   } catch (e) {}
+}
+
+/* ---------------- দৈনিক বাণী ট্যাব ---------------- */
+
+let quotePosts = [];
+
+async function renderQuotesTab() {
+  const content = panelRef.overlay.querySelector("#admContent");
+  content.innerHTML =
+    "<div>" +
+      '<div class="guidelines"><strong class="gn-head">' + I("quote", 15) + " দৈনিক বাণী পরিচালনা</strong>" +
+        "প্রতিদিনের জন্য একটি বাণী যোগ করুন। নির্দিষ্ট তারিখে বাণী না থাকলে সাইট স্বয়ংক্রিয়ভাবে তার আগের সর্বশেষ বাণী দেখায়; " +
+        "ভবিষ্যতের তারিখ দিলে বাণীটি সেই দিন থেকে স্বয়ংক্রিয়ভাবে দেখানো হবে।</div>" +
+      '<div class="aq-form">' +
+        '<div class="field" style="min-width:180px"><label>যে তারিখের জন্য</label>' +
+          '<input type="date" id="qDate"></div>' +
+        '<div class="field" style="flex:1;min-width:220px"><label>কার উক্তি / সূত্র *</label>' +
+          '<input id="qAuthor" maxlength="120" placeholder="যেমন: রবীন্দ্রনাথ ঠাকুর / সহীহ বুখারী / লেখকের নাম"></div>' +
+        '<div class="field" style="flex:1;min-width:220px"><label>আমাদের লেখা থেকে সূত্র (ঐচ্ছিক)</label>' +
+          '<select id="qSource"><option value="">— সাধারণ বাণী —</option></select></div>' +
+        '<div class="field" style="flex-basis:100%"><label>বাণীর লেখা *</label>' +
+          '<textarea id="qText" maxlength="1200" style="min-height:110px" placeholder="বাণী/উক্তিটি লিখুন…"></textarea>' +
+          '<div class="char-count" id="qCount"></div></div>' +
+        '<div class="field" style="flex-basis:100%" id="qSugBox"></div>' +
+        '<div style="flex-basis:100%;display:flex;gap:8px;flex-wrap:wrap">' +
+          '<button class="btn btn-ghost btn-sm btn-ic" id="qSugBtn">' + I("sparkles", 14) + " আমাদের লেখা থেকে বাণীর পরামর্শ</button>" +
+          '<button class="btn btn-gold btn-ic" id="qSave">' + I("save", 15) + " বাণী সংরক্ষণ করুন</button>" +
+          '<button class="btn btn-danger btn-ic" id="qDelete" hidden>' + I("trash", 15) + " এই দিনের বাণী মুছুন</button>" +
+          '<button class="btn btn-ghost btn-sm" id="qCancel" hidden>নতুন বাণী</button>' +
+        "</div>" +
+      "</div>" +
+      '<div id="quoteAdminList"><div class="loading-block"><div class="loader"></div>বাণীর তালিকা লোড হচ্ছে…</div></div>' +
+    "</div>";
+
+  const dateEl = content.querySelector("#qDate");
+  const authorEl = content.querySelector("#qAuthor");
+  const sourceEl = content.querySelector("#qSource");
+  const textEl = content.querySelector("#qText");
+  const countEl = content.querySelector("#qCount");
+  const sugBox = content.querySelector("#qSugBox");
+  const saveBtn = content.querySelector("#qSave");
+  const delBtn = content.querySelector("#qDelete");
+  const cancelBtn = content.querySelector("#qCancel");
+  const sugBtn = content.querySelector("#qSugBtn");
+
+  const todayN = dayIndexOf(new Date());
+  dateEl.value = inputValueOfDay(todayN);
+  let editingId = null;
+
+  function updCount() { countEl.textContent = bn(textEl.value.length) + " / ১,২০০ অক্ষর"; }
+  textEl.addEventListener("input", updCount); updCount();
+
+  let quotes = [];
+  try {
+    const [qs, posts] = await Promise.all([loadQuotes(true), loadPublished().catch(function () { return []; })]);
+    quotes = qs || [];
+    quotePosts = posts || [];
+  } catch (e) {
+    content.querySelector("#quoteAdminList").innerHTML =
+      '<div class="empty-state"><p>বাণী লোড ব্যর্থ: ' + escapeHtml(e.message || "") +
+      '<br>Firestore Rules নতুন করে প্রকাশ করেছেন কিনা দেখুন।</p></div>';
+    return;
+  }
+
+  /* সূত্র ড্রপডাউন */
+  sourceEl.innerHTML = '<option value="">— সাধারণ বাণী (কোনো লেখার সূত্র নয়) —</option>' +
+    quotePosts.slice(0, 300).map(function (p) {
+      return '<option value="' + p.id + '">' + escapeHtml((p.title || "শিরোনামহীন").slice(0, 80)) + " — " +
+        escapeHtml((p.authorPenName || p.authorName || "").slice(0, 40)) + "</option>";
+    }).join("");
+
+  function quoteByDay(n) { return quotes.find(function (q) { return q.day === n; }); }
+
+  function fillForm(q) {
+    editingId = q ? q.id : null;
+    textEl.value = q ? q.text : "";
+    authorEl.value = q ? q.author : "";
+    sourceEl.value = q && q.postId ? q.postId : "";
+    delBtn.hidden = !q;
+    cancelBtn.hidden = !q;
+    saveBtn.innerHTML = q ? I("save", 15) + " পরিবর্তন সংরক্ষণ করুন" : I("save", 15) + " বাণী সংরক্ষণ করুন";
+    updCount();
+  }
+
+  function syncDateToExisting() {
+    const n = dayIndexFromInput(dateEl.value);
+    fillForm(quoteByDay(n));
+  }
+  dateEl.addEventListener("change", syncDateToExisting);
+
+  /* আমাদের লেখা থেকে বাণীর পরামর্শ */
+  sugBtn.addEventListener("click", function () {
+    if (!quotePosts.length) { sugBox.innerHTML = '<p class="field-hint">এখনো কোনো প্রকাশিত লেখা পাওয়া যায়নি।</p>'; return; }
+    const sugs = suggestFromPosts(quotePosts, 1, 8);
+    if (!sugs.length) { sugBox.innerHTML = '<p class="field-hint">উপযুক্ত বাক্যাংশ পাওয়া যায়নি; নিজে লিখুন।</p>'; return; }
+    sugBox.innerHTML =
+      '<label class="aq-sug-head">' + I("feather", 13) + " প্রকাশিত লেখা থেকে বাছাই করা অংশ (ক্লিক করলে বসবে)</label>" +
+      '<div class="aq-sug-list">' + sugs.map(function (s, i) {
+        return '<button type="button" class="aq-sug" data-i="' + i + '"><b>“' + escapeHtml(s.text) + '”</b>' +
+          "<span>— " + escapeHtml(s.author) + " · «" + escapeHtml((s.sourceTitle || "").slice(0, 60)) + "»</span></button>";
+      }).join("") + "</div>";
+    sugBox.querySelectorAll(".aq-sug").forEach(function (b) {
+      b.addEventListener("click", function () {
+        const s = sugs[Number(b.getAttribute("data-i"))];
+        textEl.value = s.text;
+        authorEl.value = s.author;
+        sourceEl.value = s.postId || "";
+        updCount();
+        toast("বাণী বসানো হয়েছে — প্রয়োজনে সম্পাদনা করুন");
+      });
+    });
+  });
+
+  saveBtn.addEventListener("click", async function () {
+    const text = textEl.value.trim();
+    const author = authorEl.value.trim();
+    const day = dayIndexFromInput(dateEl.value);
+    if (text.length < 2) { textEl.focus(); return toast("বাণীর লেখা লিখুন"); }
+    if (!author) { authorEl.focus(); return toast("কার উক্তি/সূত্র লিখুন"); }
+    const post = quotePosts.find(function (p) { return p.id === sourceEl.value; });
+    const payload = {
+      text: text, author: author, day: day,
+      postId: post ? post.id : "",
+      sourceTitle: post ? post.title : ""
+    };
+    const u = currentUser();
+    const staff = { uid: u.uid, name: u.displayName || u.email || "স্টাফ", email: u.email || "" };
+    const sameDay = quoteByDay(day);
+    saveBtn.disabled = true;
+    try {
+      if (editingId) {
+        await staffUpdateQuote(editingId, payload);
+        toast("বাণী হালনাগাদ হয়েছে", "success");
+      } else if (sameDay) {
+        if (!confirm("এই তারিখে ইতিমধ্যে একটি বাণী আছে। সেটির জায়গায় নতুন বাণীটি বসবে?")) { saveBtn.disabled = false; return; }
+        await staffUpdateQuote(sameDay.id, payload);
+        toast("সেই দিনের বাণী প্রতিস্থাপন হয়েছে", "success");
+      } else {
+        await addQuote(Object.assign({ staff: staff }, payload));
+        toast("বাণী যুক্ত হয়েছে", "success");
+      }
+      loadPosts();
+    } catch (e) {
+      saveBtn.disabled = false;
+      alert("বাণী সংরক্ষণ ব্যর্থ:\n" + (e.message || "") +
+        "\n\n(Firestore Rules-এ quotes কালেকশনের অনুমতি প্রকাশিত না হলে এটি ঘটতে পারে।)");
+    }
+  });
+
+  delBtn.addEventListener("click", async function () {
+    const n = dayIndexFromInput(dateEl.value);
+    const q = editingId ? quotes.find(function (x) { return x.id === editingId; }) : quoteByDay(n);
+    if (!q) return;
+    if (!confirm(bnDateOfDay(q.day) + " তারিখের বাণীটি চিরতরে মুছবেন?")) return;
+    delBtn.disabled = true;
+    try {
+      await staffDeleteQuote(q.id);
+      toast("বাণী মুছে ফেলা হয়েছে");
+      loadPosts();
+    } catch (e) { delBtn.disabled = false; alert("মুছতে ব্যর্থ: " + (e.message || "")); }
+  });
+  cancelBtn.addEventListener("click", function () { dateEl.value = inputValueOfDay(todayN); syncDateToExisting(); });
+
+  /* তালিকা */
+  const sorted = quotes.slice().sort(function (a, b) { return b.day - a.day; });
+  const upcoming = sorted.filter(function (q) { return q.day > todayN; });
+  const todays = sorted.filter(function (q) { return q.day === todayN; });
+  const past = sorted.filter(function (q) { return q.day < todayN; });
+  const listBox = content.querySelector("#quoteAdminList");
+
+  function row(q, badge, cls) {
+    return '<div class="aq-item ' + (cls || "") + '">' +
+      '<div class="aq-meta"><b>' + escapeHtml(bnDateOfDay(q.day)) + '</b>' +
+      (badge ? " " + badge : "") + "</div>" +
+      '<div class="aq-text">“' + escapeHtml(q.text) + '”<cite>— ' + escapeHtml(q.author) + "</cite></div>" +
+      '<div class="aq-acts">' +
+        '<button class="btn btn-ghost btn-sm btn-ic" data-edit="' + q.id + '">' + I("pen", 13) + " সম্পাদনা</button>" +
+        '<button class="btn btn-danger btn-sm btn-ic" data-del="' + q.id + '">' + I("trash", 13) + " মুছুন</button>" +
+      "</div></div>";
+  }
+  let html = "";
+  if (todays.length) html += '<h4 class="tab-h4">' + I("sparkles", 15) + " আজকের বাণী</h4>" + todays.map(function (q) { return row(q, '<span class="chip chip-published">আজ</span>'); }).join("");
+  if (upcoming.length) html += '<h4 class="tab-h4">' + I("calendar", 15) + " আগামী দিনের জন্য নির্ধারিত (" + bn(upcoming.length) + ")</h4>" +
+    upcoming.slice(0, 30).map(function (q) { return row(q, '<span class="chip chip-pending">শিডিউলকৃত</span>', "aq-up"); }).join("");
+  html += '<h4 class="tab-h4">' + I("history", 15) + " অতীত বাণী (" + bn(past.length) + ")</h4>";
+  html += past.length ? '<div class="aq-past">' + past.slice(0, 60).map(function (q) { return row(q); }).join("") + "</div>"
+    : '<p class="field-hint">এখনো কোনো অতীত বাণী নেই।</p>';
+  listBox.innerHTML = html;
+
+  listBox.querySelectorAll("[data-edit]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      const q = quotes.find(function (x) { return x.id === b.getAttribute("data-edit"); });
+      if (!q) return;
+      dateEl.value = inputValueOfDay(q.day);
+      fillForm(q);
+      content.querySelector(".aq-form").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+  listBox.querySelectorAll("[data-del]").forEach(function (b) {
+    b.addEventListener("click", async function () {
+      const q = quotes.find(function (x) { return x.id === b.getAttribute("data-del"); });
+      if (!q || !confirm(bnDateOfDay(q.day) + " তারিখের বাণীটি মুছবেন?")) return;
+      try { await staffDeleteQuote(q.id); toast("মুছে ফেলা হয়েছে"); loadPosts(); }
+      catch (e) { alert("মুছতে ব্যর্থ: " + (e.message || "")); }
+    });
+  });
+
+  /* তারিখ বদলে থাকলে ফর্ম সিঙ্ক রাখা */
+  fillForm(quoteByDay(todayN));
 }
 
 /* ---------------- মডারেটর ট্যাব ---------------- */

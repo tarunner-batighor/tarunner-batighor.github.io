@@ -5,7 +5,7 @@
 ============================================================ */
 
 import {
-  onAuthChange, currentUser,
+  onAuthChange, currentUser, isStaff,
   googleSignIn, logout
 } from "./fb.js";
 import {
@@ -15,11 +15,12 @@ import {
   saveDraft, loadDraft, clearDraft,
   getMyProfile, saveMyProfile, getLocalProfile, saveLocalProfile,
   notifyStaffOfSubmission, invalidateCache,
+  loadQuotes,
   escapeHtml, bn, fmtDate, relTime, readingMinutes, makeExcerpt
 } from "./store.js";
 import { CATEGORIES, catMeta } from "./categories.js";
 import { catIcon, uiIcon, brandIcon } from "./icons.js";
-import { QUOTES, quoteForDay, quoteOfToday, dayIndexOf, bnDateOfDay } from "./quotes.js";
+import { dayIndexOf, bnDateOfDay, pickQuoteOfDay } from "./quotes.js";
 const I = uiIcon;
 import { renderEngagement, avatarHtml } from "./engage.js";
 import { renderLeaderboard } from "./leaderboard.js";
@@ -575,7 +576,7 @@ async function pageHome(view) {
     '<div class="page-anim">' +
       '<div class="hero" id="hero"><div class="loading-block" style="grid-column:1/-1"><div class="loader"></div>সর্বশেষ লেখা আনা হচ্ছে…</div></div>' +
       '<div class="stats-strip" id="statsStrip"></div>' +
-      '<section class="quote-band" id="quoteBand" style="visibility:hidden"></section>' +
+      '<section class="quote-band" id="quoteBand" hidden></section>' +
       '<section class="rail" id="picksRail" hidden></section>' +
       '<div class="section"><div class="section-head"><h2>লেখার বিভাগ</h2><a class="section-link" href="#/categories">সব ২০টি বিভাগ →</a></div>' +
         '<div class="cat-grid" id="homeCatGrid"></div></div>' +
@@ -651,18 +652,29 @@ async function pageHome(view) {
   });
   function stat(_, n, l) { return '<div class="stat-cell"><div class="n">০</div><div class="l">' + l + "</div></div>"; }
 
-  /* উক্তি ব্যান্ড */
-  const qd = quoteOfToday();
-  const qb = $("#quoteBand");
-  qb.innerHTML =
-    '<a class="qb-link" href="#/quotes">' +
-    '<div class="qb-kicker">আজকের বাণী <span class="qb-date">' + bnDateOfDay(dayIndexOf(new Date())) + "</span></div>" +
-    '<blockquote>“' + escapeHtml(qd.t) + '”</blockquote><cite>' + escapeHtml(qd.a) + "</cite>" +
-    '<span class="qb-cta" role="button">' + I("bookOpen", 15) + " আগের বাণীসমূহ <span class=\"qb-cta-arrow\">" + I("chevronRight", 14) + "</span></span>" +
-    '<span class="qb-mark" style="color:#f5b53d">' +
-    '<svg width="90" height="74" viewBox="0 0 24 24" fill="currentColor"><path d="M9.5 6C6.5 7.2 4.5 9.6 4.5 13v5h6v-6H7.8c.1-1.8 1-3 2.7-3.8zM19.5 6c-3 1.2-5 3.6-5 7v5h6v-6h-2.7c.1-1.8 1-3 2.7-3.8z" opacity=".85"/></svg></span>' +
-    "</a>";
-  qb.style.visibility = "visible";
+  /* উক্তি ব্যান্ড — Firestore-এ স্টাফ-যোগ করা দৈনিক বাণী থেকে */
+  loadQuotes().then(function (quotes) {
+    if (staleView(view, gen)) return;
+    const qb = $("#quoteBand");
+    if (!qb) return;
+    const n = dayIndexOf(new Date());
+    const qd = pickQuoteOfDay(quotes, n);
+    if (!qd) { qb.remove(); return; }
+    const isToday = qd.day === n;
+    qb.innerHTML =
+      '<a class="qb-link" href="#/quotes">' +
+      '<div class="qb-kicker">' + (isToday ? "আজকের বাণী" : "সর্বশেষ বাণী") +
+        ' <span class="qb-date">' + bnDateOfDay(qd.day) + "</span></div>" +
+      '<blockquote>“' + escapeHtml(qd.text) + '”</blockquote><cite>' + escapeHtml(qd.author) + "</cite>" +
+      '<span class="qb-cta" role="button">' + I("bookOpen", 15) + " আগের বাণীসমূহ <span class=\"qb-cta-arrow\">" + I("chevronRight", 14) + "</span></span>" +
+      '<span class="qb-mark" style="color:#f5b53d">' +
+      '<svg width="90" height="74" viewBox="0 0 24 24" fill="currentColor"><path d="M9.5 6C6.5 7.2 4.5 9.6 4.5 13v5h6v-6H7.8c.1-1.8 1-3 2.7-3.8zM19.5 6c-3 1.2-5 3.6-5 7v5h6v-6h-2.7c.1-1.8 1-3 2.7-3.8z" opacity=".85"/></svg></span>' +
+      "</a>";
+    qb.hidden = false;
+  }).catch(function () {
+    const qb = $("#quoteBand");
+    if (qb) qb.remove();
+  });
 
   /* সম্পাদকের পছন্দ রেল */
   if (featured.length >= 2) {
@@ -1278,80 +1290,108 @@ function pageHistory(view) {
 }
 
 /* ============================================================
-   দৈনিক বাণীর সংগ্রহ
+   দৈনিক বাণীর সংগ্রহ (Firestore — স্টাফ যোগ করেন)
 ============================================================ */
-let quoteBatch = 20;
-function pageQuotes(view) {
-  setMeta("দৈনিক বাণী", "প্রতিদিনের নির্বাচিত উক্তি ও আগের বাণীসমূহ");
-  const todayN = dayIndexOf(new Date());
-  const tq = quoteForDay(todayN);
-
+let quoteBatch = 12;
+async function pageQuotes(view) {
+  const gen = routeGen;
+  setMeta("দৈনিক বাণী", "প্রতিদিনের নির্বাচিত বাণী ও আগের বাণীসমূহ");
   view.innerHTML =
     '<div class="page-anim quotes-page">' +
-      '<h1 class="page-title">' + I("quote", 22) + " দৈনিক বাণী</h1>" +
-      '<p class="page-sub">প্রতিদিন স্বয়ংক্রিয়ভাবে একটি নতুন বাণী — আজকেরটি বড় করে, আর আগের দিনগুলো নিচে সাজানো</p>' +
-      '<section class="quote-today" id="quoteToday">' +
-        '<div class="qt-badge">' + I("sparkles", 14) + " <span>আজকের বাণী</span> · " + escapeHtml(bnDateOfDay(todayN)) + "</div>" +
-        '<blockquote>“' + escapeHtml(tq.t) + '”</blockquote>' +
-        '<cite>' + escapeHtml(tq.a) + "</cite>" +
-        '<div class="qt-actions">' +
-          '<button class="btn btn-gold btn-sm btn-ic" id="qtCopy">' + I("copy", 14) + " বাণীটি কপি করুন</button>" +
-          '<button class="btn btn-ghost btn-sm btn-ic" id="qtShare">' + I("share", 14) + " শেয়ার করুন</button>" +
-        "</div>" +
-      "</section>" +
-      '<div class="section-head q-archive-head"><h2>' + I("bookOpen", 18) + " আগের বাণীসমূহ</h2>" +
-        '<span class="rh-sub">ভাণ্ডারে ' + bn(QUOTES.length) + "টি বাণী</span></div>" +
-      '<div class="quote-archive" id="quoteArchive"></div>' +
-      '<div class="quote-more-wrap q-more-row">' +
-        '<button class="btn btn-ghost btn-ic" id="quoteMore">' + I("history", 16) + " আরও আগের বাণী</button>" +
-        '<button class="btn btn-ghost btn-sm btn-ic" id="quoteAll">' + I("layers", 15) + " ভাণ্ডারের সব " + bn(QUOTES.length) + "টি বাণী</button>" +
+      '<div class="q-page-head"><div><h1 class="page-title">' + I("quote", 22) + " দৈনিক বাণী</h1>" +
+      '<p class="page-sub">সম্পাদনা পরিষদ প্রতিদিন একটি নতুন বাণী নির্বাচন করেন — আজকেরটি বড় করে, আগের দিনগুলো নিচে সাজানো</p></div>' +
+      (isStaff() ? '<button class="btn btn-gold btn-ic" id="qManage">' + I("plus", 15) + " বাণী যোগ/ম্যানেজ</button>" : "") +
       "</div>" +
+      '<div id="quoteBody"><div class="loading-block" style="padding:60px"><div class="loader"></div>বাণী আনা হচ্ছে…</div></div>' +
     "</div>";
+  const qManage = $("#qManage");
+  if (qManage) qManage.addEventListener("click", function () { openAdminPanel("quotes"); });
 
-  const archive = $("#quoteArchive");
-  const moreBtn = $("#quoteMore");
-  let shown = 0;
+  let quotes;
+  try { quotes = await loadQuotes(true); }
+  catch (e) {
+    if (staleView(view, gen)) return;
+    /* অনুমতি না থাকা/খালি ভাণ্ডার — ভিজিটরকে এরর না দেখিয়ে খালি-স্টেট */
+    quotes = [];
+  }
+  if (staleView(view, gen)) return;
 
-  function quoteCard(n, idx) {
-    const q = quoteForDay(n);
+  const todayN = dayIndexOf(new Date());
+  const tq = pickQuoteOfDay(quotes, todayN);
+  const body = $("#quoteBody");
+
+  if (!tq) {
+    body.innerHTML =
+      '<div class="empty-state" style="padding:60px 24px"><div class="es-icon">' + I("quote", 44) + '</div>' +
+      "<h3>এখনো কোনো বাণী সংগ্রহে নেই</h3>" +
+      "<p>সম্পাদনা পরিষদ শিগগিরই প্রতিদিনের বাণী যোগ করবেন।</p>" +
+      (isStaff() ? '<button class="btn btn-gold btn-ic" id="qManage2">' + I("plus", 16) + " প্রথম বাণীটি যোগ করুন</button>" : "") +
+      "</div>";
+    const b2 = $("#qManage2");
+    if (b2) b2.addEventListener("click", function () { openAdminPanel("quotes"); });
+    return;
+  }
+
+  const isToday = tq.day === todayN;
+  const past = quotes.filter(function (q) { return q.day <= tq.day && q.id !== tq.id; })
+    .sort(function (a, b) { return b.day - a.day; });
+
+  body.innerHTML =
+    '<section class="quote-today" id="quoteToday">' +
+      '<div class="qt-badge">' + I("sparkles", 14) +
+        " <span>" + (isToday ? "আজকের বাণী" : "সর্বশেষ বাণী") + "</span> · " + escapeHtml(bnDateOfDay(tq.day)) + "</div>" +
+      '<blockquote>“' + escapeHtml(tq.text) + '”</blockquote>' +
+      '<cite>' + escapeHtml(tq.author) + "</cite>" +
+      (tq.postId ? '<a class="qt-source" href="#/post/' + tq.postId + '">' + I("bookOpen", 13) +
+        " সূত্র: " + escapeHtml(tq.sourceTitle || "মূল লেখা") + "</a>" : "") +
+      '<div class="qt-actions">' +
+        '<button class="btn btn-gold btn-sm btn-ic" id="qtCopy">' + I("copy", 14) + " বাণীটি কপি করুন</button>" +
+        '<button class="btn btn-ghost btn-sm btn-ic" id="qtShare">' + I("share", 14) + " শেয়ার করুন</button>" +
+      "</div>" +
+    "</section>";
+
+  if (past.length) {
+    body.insertAdjacentHTML("beforeend",
+      '<div class="section-head q-archive-head"><h2>' + I("bookOpen", 18) + " আগের বাণীসমূহ</h2>" +
+        '<span class="rh-sub">সংগ্রহে ' + bn(past.length + 1) + "টি বাণী</span></div>" +
+      '<div class="quote-archive" id="quoteArchive"></div>' +
+      '<div class="quote-more-wrap" ' + (past.length <= quoteBatch ? "hidden" : "") + '>' +
+        '<button class="btn btn-ghost btn-ic" id="quoteMore">' + I("history", 16) + " আরও আগের বাণী</button></div>");
+  }
+
+  function quoteCard(q) {
     return '<article class="quote-card qc-day">' +
-      '<div class="qc-date">' + I("clock", 13) + " <span>" + escapeHtml(bnDateOfDay(n)) + "</span></div>" +
-      '<blockquote>“' + escapeHtml(q.t) + '”</blockquote>' +
-      '<cite>' + escapeHtml(q.a) + "</cite>" +
+      '<div class="qc-date">' + I("clock", 13) + " <span>" + escapeHtml(bnDateOfDay(q.day)) + "</span></div>" +
+      '<blockquote>“' + escapeHtml(q.text) + '”</blockquote>' +
+      '<cite>' + escapeHtml(q.author) + "</cite>" +
+      (q.postId ? '<a class="qc-source" href="#/post/' + q.postId + '">' + I("bookOpen", 12) + " " +
+        escapeHtml(q.sourceTitle || "মূল লেখা") + "</a>" : "") +
     "</article>";
   }
 
-  function renderBatch() {
-    const frag = [];
-    for (let i = 0; i < quoteBatch && shown < todayN; i++) {
-      shown++;
-      frag.push(quoteCard(todayN - shown, shown));
+  const archive = $("#quoteArchive");
+  const moreBtn = $("#quoteMore");
+  if (archive) {
+    let shown = 0;
+    function renderBatch() {
+      const frag = [];
+      for (let i = 0; i < quoteBatch && shown < past.length; i++) frag.push(quoteCard(past[shown++]));
+      archive.insertAdjacentHTML("beforeend", frag.join(""));
+      if (shown >= past.length && moreBtn) moreBtn.parentElement.hidden = true;
     }
-    archive.insertAdjacentHTML("beforeend", frag.join(""));
-    if (shown >= todayN || todayN <= 0) moreBtn.hidden = true;
+    renderBatch();
+    if (moreBtn) moreBtn.addEventListener("click", renderBatch);
   }
-  renderBatch();
-  moreBtn.addEventListener("click", renderBatch);
 
-  $("#quoteAll").addEventListener("click", function () {
-    const btn = this;
-    btn.hidden = true;
-    const html = QUOTES.map(function (q, i) {
-      return '<article class="quote-card"><div class="qc-date">' + I("feather", 13) +
-        ' <span>বাণী ' + bn(i + 1) + "</span></div>" +
-        '<blockquote>“' + escapeHtml(q.t) + '”</blockquote><cite>' + escapeHtml(q.a) + "</cite></article>";
-    }).join("");
-    archive.insertAdjacentHTML("beforeend",
-      '<div class="qc-divider"><span>' + I("bookOpen", 15) + " ভাণ্ডারের সম্পূর্ণ তালিকা</span></div>" + html);
-  });
-
-  function quoteText(q) { return "“" + q.t + "” — " + q.a + "\n(তারুণ্যের বাতিঘর)"; }
+  function quoteText(q) {
+    let t = "“" + q.text + "” — " + q.author;
+    if (q.sourceTitle) t += " («" + q.sourceTitle + "», তারুণ্যের বাতিঘর)";
+    else t += "\n(তারুণ্যের বাতিঘর)";
+    return t;
+  }
   $("#qtCopy").addEventListener("click", async function () {
-    const btn = this;
     try { await navigator.clipboard.writeText(quoteText(tq)); toast("বাণীটি কপি হয়েছে", "success"); }
-    catch (e) {
-      try { prompt("বাণীটি কপি করুন:", quoteText(tq)); } catch (e2) {}
-    }
+    catch (e) { try { prompt("বাণীটি কপি করুন:", quoteText(tq)); } catch (e2) {} }
   });
   $("#qtShare").addEventListener("click", async function () {
     const url = location.origin + location.pathname + "#/quotes";

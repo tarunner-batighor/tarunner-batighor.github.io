@@ -231,5 +231,23 @@ service cloud.firestore {
       allow read, list: if isStaff();
       allow update, delete: if isAdmin();
     }
+
+    /* দৈনিক বাণী (v5.3):
+       - সবাই বাণী পড়তে পারবে (public)
+       - Admin + Moderator বাণী যোগ/বদল/মুছতে পারবেন
+         (মডারেশন প্যানেলের «বাণী» ট্যাব)
+       - text ২–১২০০ অক্ষর, author ১–১২০ অক্ষর, day সংখ্যা */
+    match /quotes/{quoteId} {
+      allow get, list: if true;
+      allow create: if isStaff()
+        && request.resource.data.text is string
+        && request.resource.data.text.size() >= 2
+        && request.resource.data.text.size() <= 1200
+        && request.resource.data.author is string
+        && request.resource.data.author.size() >= 1
+        && request.resource.data.author.size() <= 120
+        && request.resource.data.day is number;
+      allow update, delete: if isStaff();
+    }
   }
 }

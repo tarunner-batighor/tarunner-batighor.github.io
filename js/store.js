@@ -186,6 +186,80 @@ export async function setFeatured(id, on) {
   invalidateCache();
 }
 
+/* ---------------- দৈনিক বাণী (স্টাফ-পরিচালিত) ---------------- */
+
+function normQuote(id, d) {
+  return {
+    id: id,
+    text: d.text || "",
+    author: d.author || "",
+    day: typeof d.day === "number" ? d.day : null,
+    postId: d.postId || "",
+    sourceTitle: d.sourceTitle || "",
+    createdByName: (d.createdBy && d.createdBy.name) || "",
+    createdAt: d.createdAt || null,
+    _ms: tsMs(d.createdAt)
+  };
+}
+
+let _quoteCache = null;
+let _quoteCacheAt = 0;
+const QUOTE_TTL = 30 * 1000;
+let _quoteInflight = null;
+
+export async function loadQuotes(force) {
+  if (!force && _quoteCache && Date.now() - _quoteCacheAt < QUOTE_TTL) return _quoteCache;
+  if (_quoteInflight) return _quoteInflight;
+  _quoteInflight = (async function () {
+    const snap = await getDocs(query(collection(db, "quotes"), orderBy("day", "desc"), limit(500)));
+    const arr = [];
+    snap.forEach(function (sd) { arr.push(normQuote(sd.id, sd.data())); });
+    _quoteCache = arr;
+    _quoteCacheAt = Date.now();
+    return arr;
+  })();
+  try { return await _quoteInflight; }
+  finally { _quoteInflight = null; }
+}
+
+export function invalidateQuoteCache() {
+  _quoteCache = null;
+  _quoteCacheAt = 0;
+}
+
+export async function addQuote({ text, author, day, postId, sourceTitle, staff }) {
+  const ref = await addDoc(collection(db, "quotes"), {
+    text: String(text || "").trim().slice(0, 1200),
+    author: String(author || "").trim().slice(0, 120),
+    day: Math.trunc(day),
+    postId: postId || "",
+    sourceTitle: String(sourceTitle || "").trim().slice(0, 300),
+    createdBy: {
+      uid: (staff && staff.uid) || "",
+      name: (staff && staff.name) || "",
+      email: (staff && staff.email) || ""
+    },
+    createdAt: serverTimestamp()
+  });
+  invalidateQuoteCache();
+  return ref.id;
+}
+
+export async function staffUpdateQuote(id, data) {
+  const payload = {};
+  ["text", "author", "postId", "sourceTitle"].forEach(function (k) {
+    if (data[k] != null) payload[k] = k === "text" ? String(data[k]).slice(0, 1200) : String(data[k]);
+  });
+  if (typeof data.day === "number") payload.day = Math.trunc(data.day);
+  await updateDoc(doc(db, "quotes", id), payload);
+  invalidateQuoteCache();
+}
+
+export async function staffDeleteQuote(id) {
+  await deleteDoc(doc(db, "quotes", id));
+  invalidateQuoteCache();
+}
+
 /* আমার সব লেখা (pending/rejected সহ — rules নিজের লেখা পড়তে দেয়) */
 export async function getMyPosts(uid) {
   const snap = await getDocs(query(collection(db, "Posts"), where("authorUid", "==", uid)));

@@ -6,7 +6,7 @@
    - FCM ওয়েব পুশ হ্যান্ডলার পুরোনো মতো অক্ষত
    ============================================================ */
 
-const CACHE_NAME = "batighor-v14";
+const CACHE_NAME = "batighor-v15";
 const SHELL = "batighor-shell-v13";
 const RUNTIME = "batighor-runtime-v13";
 
