@@ -19,6 +19,7 @@ import {
 } from "./store.js";
 import { CATEGORIES, catMeta } from "./categories.js";
 import { catIcon, uiIcon, brandIcon } from "./icons.js";
+import { QUOTES, quoteForDay, quoteOfToday, dayIndexOf, bnDateOfDay } from "./quotes.js";
 const I = uiIcon;
 import { renderEngagement, avatarHtml } from "./engage.js";
 import { renderLeaderboard } from "./leaderboard.js";
@@ -117,37 +118,7 @@ function skeletonGrid(n) {
   return '<div class="post-grid">' + h + "</div>";
 }
 
-/* ---------------- দৈনিক উক্তি ---------------- */
-const QUOTES = [
-  { t: "তোমরা সহজ করো, কঠিন করো না; সুসংবাদ দাও, বিতৃষ্ণা সৃষ্টি করো না।", a: "সহীহ বুখারী ও মুসলিম" },
-  { t: "তোমাদের মধ্যে সে-ই উত্তম, যে কুরআন শেখে এবং অন্যকে শেখায়।", a: "সহীহ বুখারী" },
-  { t: "যে ব্যক্তি জ্ঞানের সন্ধানে পথে বের হয়, আল্লাহ তার জন্য জান্নাতের পথ সহজ করে দেন।", a: "সহীহ মুসলিম" },
-  { t: "সর্বোত্তম জিহাদ হলো অত্যাচারী শাসকের সামনে সত্য কথা বলা।", a: "সুনান আবু দাউদ" },
-  { t: "যে আল্লাহর পথে ব্যয় করে, আল্লাহ তার বিনিময়ে উত্তম প্রতিদান দেন।", a: "আল-কুরআন, সূরা বাকারা ২:২৬১" },
-  { t: "জ্ঞান অর্জন করো, কারণ জ্ঞানী ব্যক্তির নীরবতাও এক ধরনের উত্তর।", a: "শেখ সাদী, গুলিস্তাঁ" },
-  { t: "জ্ঞান ছাড়া আমলের কোনো মূল্য নেই, আর জ্ঞান-আমল ছাড়া সফলতা নেই।", a: "ইমাম গাজ্জালি (র.)" },
-  { t: "তোমার ক্ষত সেই পথ, যেখান দিয়ে আলো তোমার অন্তরে প্রবেশ করে।", a: "মাওলানা রুমি" },
-  { t: "তুমি যা খুঁজে বেড়াচ্ছো, তাও তোমাকেই খুঁজছে।", a: "মাওলানা রুমি" },
-  { t: "যদি তোর ডাক শুনে কেউ না আসে, তবে একলা চলো রে।", a: "রবীন্দ্রনাথ ঠাকুর" },
-  { t: "মোরা একই বৃন্তে ফুটি দুটি কুসুম ভাই—হিন্দু আর মুসলমান।", a: "কাজী নজরুল ইসলাম" },
-  { t: "বল বীর—বল উন্নত মম শির! শির নেহারি অমার শিরোপায়।", a: "কাজী নজরুল ইসলাম" },
-  { t: "হাজার বছর ধরে আমি পথ হাঁটিতেছি পৃথিবীর পথে।", a: "জীবনানন্দ দাশ" },
-  { t: "সব লোকে কয় লালন কী জাত সংসারে? জাতির কী রূপ—দেখলাম না এ নজরে।", a: "লালন শাহ" },
-  { t: "যে জাতি নিজ মাতৃভাষাকে ভালোবাসে না, সে জাতি কখনো উন্নত হতে পারে না।", a: "মাইকেল মধুসূদন দত্ত" },
-  { t: "জ্ঞান হলো হারানো সম্পদ—সেটা যেখানে পাও, কুড়িয়ে নাও।", a: "হযরত আলী (রা.)" },
-  { t: "মন্দের জবাবে মন্দ করা সহজ; কিন্তু যে মন্দের জবাবে ভালো করে, সে-ই প্রকৃত বীর।", a: "চিরায়ত নীতি" },
-  { t: "নিজেকে বদলাও, তাহলে তোমার চারপাশের পৃথিবীও বদলে যাবে।", a: "চিরন্তন উপদেশ" },
-  { t: "কলমের আঘাত তরবারির আঘাতের চেয়েও গভীর।", a: "শেখ সাদী, গুলিস্তাঁ" },
-  { t: "পড়াশোনা কোরো না যশের জন্য; পড়াশোনা কোরো নিজেকে মানুষ করার জন্য।", a: "আরবি প্রবাদ" },
-  { t: "কুফরি যতই অন্ধকার আনুক, একটি সত্যের প্রদীপ তা ছিন্ন করে দেয়।", a: "ইসলামি চিন্তাবিদের উক্তি" },
-  { t: "সত্য বলো, সত্যের পথে চলো—এ দুটোই জীবনের শ্রেষ্ঠ পুঁজি।", a: "নৈতিক বাণী" }
-];
-function quoteOfToday() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 0);
-  const day = Math.floor((now - start) / 86400000);
-  return QUOTES[day % QUOTES.length];
-}
+/* দৈনিক উক্তি ও বাণী-সংগ্রহ: js/quotes.js দেখুন */
 
 /* ============================================================
    শেল ইনিশ
@@ -577,6 +548,7 @@ async function render() {
     if (root === "search") return pageSearch(view, q.q || "");
     if (root === "writer") return pageWriter(view, parts[1]);
     if (root === "writers") return pageWriters(view);
+    if (root === "quotes" || root === "bani") return pageQuotes(view);
     if (root === "leaderboard") return renderLeaderboard(view);
     if (root === "submit") return pageSubmit(view);
     if (root === "my") return pageMy(view);
@@ -683,10 +655,13 @@ async function pageHome(view) {
   const qd = quoteOfToday();
   const qb = $("#quoteBand");
   qb.innerHTML =
-    '<div class="qb-kicker">আজকের বাণী</div>' +
+    '<a class="qb-link" href="#/quotes">' +
+    '<div class="qb-kicker">আজকের বাণী <span class="qb-date">' + bnDateOfDay(dayIndexOf(new Date())) + "</span></div>" +
     '<blockquote>“' + escapeHtml(qd.t) + '”</blockquote><cite>' + escapeHtml(qd.a) + "</cite>" +
+    '<span class="qb-cta" role="button">' + I("bookOpen", 15) + " আগের বাণীসমূহ <span class=\"qb-cta-arrow\">" + I("chevronRight", 14) + "</span></span>" +
     '<span class="qb-mark" style="color:#f5b53d">' +
-    '<svg width="90" height="74" viewBox="0 0 24 24" fill="currentColor"><path d="M9.5 6C6.5 7.2 4.5 9.6 4.5 13v5h6v-6H7.8c.1-1.8 1-3 2.7-3.8zM19.5 6c-3 1.2-5 3.6-5 7v5h6v-6h-2.7c.1-1.8 1-3 2.7-3.8z" opacity=".85"/></svg></span>';
+    '<svg width="90" height="74" viewBox="0 0 24 24" fill="currentColor"><path d="M9.5 6C6.5 7.2 4.5 9.6 4.5 13v5h6v-6H7.8c.1-1.8 1-3 2.7-3.8zM19.5 6c-3 1.2-5 3.6-5 7v5h6v-6h-2.7c.1-1.8 1-3 2.7-3.8z" opacity=".85"/></svg></span>' +
+    "</a>";
   qb.style.visibility = "visible";
 
   /* সম্পাদকের পছন্দ রেল */
@@ -1299,6 +1274,89 @@ function pageHistory(view) {
   $("#clearHist").addEventListener("click", function () {
     if (!confirm("পঠন-ইতিহাস মুছবেন?")) return;
     clearHistory(); pageHistory(view);
+  });
+}
+
+/* ============================================================
+   দৈনিক বাণীর সংগ্রহ
+============================================================ */
+let quoteBatch = 20;
+function pageQuotes(view) {
+  setMeta("দৈনিক বাণী", "প্রতিদিনের নির্বাচিত উক্তি ও আগের বাণীসমূহ");
+  const todayN = dayIndexOf(new Date());
+  const tq = quoteForDay(todayN);
+
+  view.innerHTML =
+    '<div class="page-anim quotes-page">' +
+      '<h1 class="page-title">' + I("quote", 22) + " দৈনিক বাণী</h1>" +
+      '<p class="page-sub">প্রতিদিন স্বয়ংক্রিয়ভাবে একটি নতুন বাণী — আজকেরটি বড় করে, আর আগের দিনগুলো নিচে সাজানো</p>' +
+      '<section class="quote-today" id="quoteToday">' +
+        '<div class="qt-badge">' + I("sparkles", 14) + " <span>আজকের বাণী</span> · " + escapeHtml(bnDateOfDay(todayN)) + "</div>" +
+        '<blockquote>“' + escapeHtml(tq.t) + '”</blockquote>' +
+        '<cite>' + escapeHtml(tq.a) + "</cite>" +
+        '<div class="qt-actions">' +
+          '<button class="btn btn-gold btn-sm btn-ic" id="qtCopy">' + I("copy", 14) + " বাণীটি কপি করুন</button>" +
+          '<button class="btn btn-ghost btn-sm btn-ic" id="qtShare">' + I("share", 14) + " শেয়ার করুন</button>" +
+        "</div>" +
+      "</section>" +
+      '<div class="section-head q-archive-head"><h2>' + I("bookOpen", 18) + " আগের বাণীসমূহ</h2>" +
+        '<span class="rh-sub">ভাণ্ডারে ' + bn(QUOTES.length) + "টি বাণী</span></div>" +
+      '<div class="quote-archive" id="quoteArchive"></div>' +
+      '<div class="quote-more-wrap q-more-row">' +
+        '<button class="btn btn-ghost btn-ic" id="quoteMore">' + I("history", 16) + " আরও আগের বাণী</button>" +
+        '<button class="btn btn-ghost btn-sm btn-ic" id="quoteAll">' + I("layers", 15) + " ভাণ্ডারের সব " + bn(QUOTES.length) + "টি বাণী</button>" +
+      "</div>" +
+    "</div>";
+
+  const archive = $("#quoteArchive");
+  const moreBtn = $("#quoteMore");
+  let shown = 0;
+
+  function quoteCard(n, idx) {
+    const q = quoteForDay(n);
+    return '<article class="quote-card qc-day">' +
+      '<div class="qc-date">' + I("clock", 13) + " <span>" + escapeHtml(bnDateOfDay(n)) + "</span></div>" +
+      '<blockquote>“' + escapeHtml(q.t) + '”</blockquote>' +
+      '<cite>' + escapeHtml(q.a) + "</cite>" +
+    "</article>";
+  }
+
+  function renderBatch() {
+    const frag = [];
+    for (let i = 0; i < quoteBatch && shown < todayN; i++) {
+      shown++;
+      frag.push(quoteCard(todayN - shown, shown));
+    }
+    archive.insertAdjacentHTML("beforeend", frag.join(""));
+    if (shown >= todayN || todayN <= 0) moreBtn.hidden = true;
+  }
+  renderBatch();
+  moreBtn.addEventListener("click", renderBatch);
+
+  $("#quoteAll").addEventListener("click", function () {
+    const btn = this;
+    btn.hidden = true;
+    const html = QUOTES.map(function (q, i) {
+      return '<article class="quote-card"><div class="qc-date">' + I("feather", 13) +
+        ' <span>বাণী ' + bn(i + 1) + "</span></div>" +
+        '<blockquote>“' + escapeHtml(q.t) + '”</blockquote><cite>' + escapeHtml(q.a) + "</cite></article>";
+    }).join("");
+    archive.insertAdjacentHTML("beforeend",
+      '<div class="qc-divider"><span>' + I("bookOpen", 15) + " ভাণ্ডারের সম্পূর্ণ তালিকা</span></div>" + html);
+  });
+
+  function quoteText(q) { return "“" + q.t + "” — " + q.a + "\n(তারুণ্যের বাতিঘর)"; }
+  $("#qtCopy").addEventListener("click", async function () {
+    const btn = this;
+    try { await navigator.clipboard.writeText(quoteText(tq)); toast("বাণীটি কপি হয়েছে", "success"); }
+    catch (e) {
+      try { prompt("বাণীটি কপি করুন:", quoteText(tq)); } catch (e2) {}
+    }
+  });
+  $("#qtShare").addEventListener("click", async function () {
+    const url = location.origin + location.pathname + "#/quotes";
+    if (navigator.share) { try { await navigator.share({ title: "আজকের বাণী — তারুণ্যের বাতিঘর", text: quoteText(tq), url: url }); } catch (e) {} }
+    else { try { await navigator.clipboard.writeText(quoteText(tq) + " " + url); toast("লিংকসহ বাণী কপি হয়েছে", "success"); } catch (e) {} }
   });
 }
 
