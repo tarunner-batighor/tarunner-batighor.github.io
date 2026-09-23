@@ -896,7 +896,9 @@ async function pagePost(view, id) {
   });
 
   const sharePop = $("#sharePop");
-  const url = location.origin + location.pathname + "#/post/" + id;
+  // Hash routes are invisible to social crawlers. Share the generated static route instead;
+  // its HTML contains the post's Open Graph metadata and redirects human visitors to the article.
+  const url = new URL("/share/" + encodeURIComponent(id) + "/", location.origin).href;
   const shareText = post.title + " — তারুণ্যের বাতিঘর";
   $("#shareBtn").addEventListener("click", function (e) {
     e.stopPropagation(); sharePop.classList.toggle("open");
